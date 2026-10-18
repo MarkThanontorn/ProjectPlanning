@@ -1,0 +1,13 @@
+@import './theme.css';
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-slate-50 font-sans antialiased;
+}
+
+/* Pencil cursor for names that can be renamed in place. */
+.cursor-pencil {
+  cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24'><path d='M3 21l1.2-4.8L16.5 3.9a2 2 0 0 1 2.8 0l.8.8a2 2 0 0 1 0 2.8L7.8 19.8z' fill='%23fde68a' stroke='%23111827' stroke-width='1.6' stroke-linejoin='round'/><path d='M14.5 5.9l3.6 3.6' stroke='%23111827' stroke-width='1.6'/><path d='M3 21l1.2-4.8 3.6 3.6z' fill='%23111827'/></svg>") 1 13, text;
+}
