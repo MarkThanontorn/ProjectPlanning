@@ -110,6 +110,12 @@ export interface Settings {
   navOrder: string[];
   /** Shown under the app name, e.g. the team that owns this planner. */
   teamName: string;
+  /** Last JSON backup (ISO datetime). */
+  lastBackupAt: string | null;
+  /** When this planner was first used here (ISO datetime); backup reminders count from it until the first backup. */
+  firstUsedAt: string | null;
+  /** Backup reminder hidden until this time (ISO datetime). */
+  backupSnoozeUntil: string | null;
 }
 
 export type GanttScale = 'day' | 'week' | 'month' | 'quarter' | 'year';

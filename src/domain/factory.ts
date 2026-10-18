@@ -71,6 +71,9 @@ export const defaultSettings = (): Settings => ({
   theme: 'system',
   navOrder: [],
   teamName: '',
+  lastBackupAt: null,
+  firstUsedAt: null,
+  backupSnoozeUntil: null,
 });
 
 export const defaultToday = (): TodayData => ({ highlights: {}, routines: [], routineDone: {} });

@@ -9,6 +9,7 @@ import { SidebarNav } from './SidebarNav';
 import { RoutineReminders } from './RoutineReminders';
 import { WhatsNew } from './WhatsNew';
 import { DemoBanner } from './Onboarding';
+import { BackupReminder } from './BackupReminder';
 
 function isAppData(x: unknown): x is AppData {
   const d = x as AppData;
@@ -30,7 +31,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   };
   const runExport = async (kind: 'json' | 'xlsx' | 'csv') => {
     setExportOpen(false);
-    if (kind === 'json') exportJson(snapshot());
+    if (kind === 'json') {
+      exportJson(snapshot());
+      updateSettings({ lastBackupAt: new Date().toISOString(), backupSnoozeUntil: null });
+    }
     else if (kind === 'csv') exportCsv(snapshot());
     else await exportXlsx(snapshot());
   };
@@ -136,6 +140,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             v{__APP_VERSION__} · {t('app.whatsNew')}
           </button>
+          <StorageStatus />
           <button
             className="w-full text-center text-[11px] text-slate-400 hover:text-rose-600 hover:underline"
             onClick={() => confirm(t('onboard.resetConfirm')) && resetAll()}
@@ -146,6 +151,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
       <main className="min-w-0 flex-1 p-6">
         <DemoBanner />
+        <BackupReminder onBackup={() => void runExport('json')} />
         {children}
       </main>
       {showNews && <WhatsNew onClose={() => setShowNews(false)} />}
@@ -179,5 +185,24 @@ function TeamName() {
     >
       {teamName || `+ ${t('app.teamAdd')}`}
     </button>
+  );
+}
+
+/** One-line storage status: persistent or not, and when the last backup was made. */
+function StorageStatus() {
+  const { t, i18n } = useTranslation();
+  const persisted = useAppStore((s) => s.storagePersisted);
+  const lastBackupAt = useAppStore((s) => s.settings.lastBackupAt);
+  const when = lastBackupAt
+    ? new Intl.DateTimeFormat(i18n.language === 'th' ? 'th-TH' : 'en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(lastBackupAt))
+    : t('backup.none');
+  return (
+    <div
+      className="text-center text-[11px] leading-tight text-slate-400"
+      title={persisted === false ? t('backup.notPersistedHint') : persisted ? t('backup.persistedHint') : undefined}
+    >
+      {persisted === null ? '' : persisted ? `🔒 ${t('backup.persisted')} · ` : `⚠ ${t('backup.notPersisted')} · `}
+      {t('backup.last')}: {when}
+    </div>
   );
 }

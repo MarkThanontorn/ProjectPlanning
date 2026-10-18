@@ -345,5 +345,17 @@
     "removeConfirm": "Remove all sample data? Items you created yourself will stay.",
     "reset": "Delete all data / start over",
     "resetConfirm": "Delete all projects, tasks, milestones and Today data and start over?\n(Settings, theme, team name and columns stay.)\n\nExport a backup (.json) first — this can't be undone."
+  },
+  "backup": {
+    "since": "No backup for {{n}} days — your data lives only in this browser and is lost if the browser data is cleared",
+    "never": "Never backed up ({{n}} days in use) — your data lives only in this browser and is lost if the browser data is cleared",
+    "now": "Back up now (.json)",
+    "later": "Remind me tomorrow",
+    "none": "never",
+    "last": "Last backup",
+    "persisted": "Persistent",
+    "notPersisted": "Not persistent",
+    "persistedHint": "The browser won't evict this app's data when disk space runs low (clearing browser data still removes it)",
+    "notPersistedHint": "The browser hasn't granted persistent storage — data could be evicted when disk space runs low. Back up regularly (browsers usually grant it to sites you use often or bookmark/install)."
   }
 }

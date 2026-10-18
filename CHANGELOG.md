@@ -10,6 +10,12 @@ Versions before 1.0.0 were reconstructed after the fact from the development his
 (dates are approximate). Only 1.0.0 onward exists in git, so earlier versions can be
 read about here but not checked out.
 
+## [1.1.1] — 2026-10-18
+- Asks the browser for persistent storage, so data isn't evicted when disk space runs low;
+  the sidebar shows whether it was granted and when the last backup was made.
+- Backup reminder: a banner after 7 days without a JSON backup (or since first use),
+  with "Back up now" and "Remind me tomorrow". Only shown when there is real (non-sample) data.
+
 ## [1.1.0] — 2026-10-18
 - First launch shows a welcome screen: start empty, or explore with sample data.
 - Sample data is tagged; a banner offers "Remove sample data", which keeps your own items.

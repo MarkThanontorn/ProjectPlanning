@@ -22,6 +22,8 @@ interface AppState extends AppData {
   boardDay: string | null;
   /** True on first launch (nothing saved yet): show the welcome screen. */
   needsOnboarding: boolean;
+  /** Whether the browser agreed to keep this site's data (not evicted when disk space runs low). null = unknown. */
+  storagePersisted: boolean | null;
   startWithDemo(): void;
   startEmpty(): void;
   /** Remove only the sample data; the user's own items stay. */
@@ -75,6 +77,19 @@ interface AppState extends AppData {
 }
 
 let initPromise: Promise<void> | undefined;
+
+/**
+ * Asks the browser to keep this site's storage permanently, so IndexedDB isn't
+ * evicted under storage pressure. Chrome/Edge decide silently (no prompt).
+ */
+async function requestPersistentStorage(): Promise<boolean | null> {
+  try {
+    if (!navigator.storage?.persist) return null;
+    return (await navigator.storage.persisted()) || (await navigator.storage.persist());
+  } catch {
+    return null;
+  }
+}
 let saving = false;
 let dirty = false;
 
@@ -116,6 +131,7 @@ export const useAppStore = create<AppState>((set, get) => {
     openTaskId: null,
     boardDay: null,
     needsOnboarding: false,
+    storagePersisted: null,
 
     startWithDemo() {
       const demo = seedData();
@@ -142,8 +158,14 @@ export const useAppStore = create<AppState>((set, get) => {
       initPromise ??= (async () => {
         const data = await repo.load();
         // First launch: start empty and let the welcome screen offer the sample data.
-        if (!data) set({ loaded: true, needsOnboarding: true });
-        else set({ ...normalizeData(data), loaded: true });
+        if (!data) set({ loaded: true, needsOnboarding: true, settings: { ...defaultSettings(), firstUsedAt: new Date().toISOString() } });
+        else {
+          const d = normalizeData(data);
+          set({ ...d, loaded: true });
+          // Data saved by versions before 1.1.1 has no first-use date: start counting now.
+          if (!d.settings.firstUsedAt) get().updateSettings({ firstUsedAt: new Date().toISOString() });
+        }
+        void requestPersistentStorage().then((persisted) => set({ storagePersisted: persisted }));
       })();
       return initPromise;
     },
