@@ -10,6 +10,10 @@ Versions before 1.0.0 were reconstructed after the fact from the development his
 (dates are approximate). Only 1.0.0 onward exists in git, so earlier versions can be
 read about here but not checked out.
 
+## [1.0.1] — 2026-10-18
+- "What's new" follows the app language (Thai or English) and can be switched in the dialog.
+  `CHANGELOG.md` stays English-only; the Thai copy lives in `src/i18n/changelog.th.md`.
+
 ## [1.0.0] — 2026-10-18
 First published release. Everything below, plus:
 - Version number shown in the sidebar, with this changelog under "What's new".

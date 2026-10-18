@@ -38,7 +38,8 @@ Every release is listed in [`CHANGELOG.md`](CHANGELOG.md).
 - **Patch** `1.0.1` — fixes / small visual tweaks
 
 Release steps:
-1. Add the changes under a new version heading in `CHANGELOG.md`.
+1. Add the changes under a new version heading in `CHANGELOG.md` (English — this is what GitHub shows),
+   and the same entry in Thai in `src/i18n/changelog.th.md` (shown in the app).
 2. Bump `"version"` in `package.json` to match.
 3. `npm run test && npm run build`
 4. `git commit`, tag it (`git tag -a vX.Y.Z -m "vX.Y.Z"`) and push both: `git push && git push --tags`
