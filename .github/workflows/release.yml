@@ -1,0 +1,31 @@
+# On a version tag (v1.2.3): build the single-file app and attach it to a GitHub Release,
+# so it can be downloaded and opened on computers that can't reach the hosted site.
+name: Release single-file app
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build:single
+      - name: Create release with the single-file app
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp dist-single/index.html "ProjectPlanning-${GITHUB_REF_NAME}.html"
+          gh release create "$GITHUB_REF_NAME" "ProjectPlanning-${GITHUB_REF_NAME}.html" \
+            --title "$GITHUB_REF_NAME" \
+            --notes "Download the .html file and open it in Edge or Chrome. Changes: see CHANGELOG.md."

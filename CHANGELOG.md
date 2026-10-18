@@ -13,6 +13,10 @@ read about here but not checked out.
 ## [1.0.0] — 2026-10-18
 First published release. Everything below, plus:
 - Version number shown in the sidebar, with this changelog under "What's new".
+- Hosted on GitHub Pages (deployed automatically on every push).
+- Single-file version (one `.html` file) attached to each GitHub Release, for computers
+  that can't reach the hosted site.
+- Page links now use `#/…` so refreshing works on static hosting and from a local file.
 
 ## [0.19.0] — 2026-10-18
 - Dark mode: light / dark / follow system.
