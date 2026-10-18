@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AppShell } from './components/AppShell';
+import { Welcome } from './components/Onboarding';
 import { orderedNav } from './nav';
 import { TaskDetailModal } from './components/TaskDetailModal';
 import { useAppStore } from './store/useAppStore';
@@ -15,6 +16,7 @@ import { MasterPlanView } from './views/master/MasterPlanView';
 export default function App() {
   const { t, i18n } = useTranslation();
   const loaded = useAppStore((s) => s.loaded);
+  const needsOnboarding = useAppStore((s) => s.needsOnboarding);
   const lang = useAppStore((s) => s.settings.lang);
   const init = useAppStore((s) => s.init);
 
@@ -62,6 +64,7 @@ export default function App() {
         <Route path="*" element={<Navigate to={home} replace />} />
       </Routes>
       <TaskDetailModal />
+      {needsOnboarding && <Welcome />}
     </AppShell>
   );
 }

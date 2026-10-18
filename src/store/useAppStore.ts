@@ -7,6 +7,7 @@ import type { AppData, ColumnDef, Eisenhower, Milestone, NodeKind, Routine, Sett
 export const MAX_HIGHLIGHTS = 3;
 import { DexieRepository } from '../data/dexieRepo';
 import { normalizeData } from '../domain/normalize';
+import { stripDemo } from '../domain/demo';
 import { blockers, wouldCycle } from '../domain/deps';
 import type { Repository } from '../data/repository';
 import { seedData } from '../data/seed';
@@ -19,6 +20,14 @@ interface AppState extends AppData {
   openTaskId: string | null;
   /** Day shown in the board's day column; null = today. Not saved. */
   boardDay: string | null;
+  /** True on first launch (nothing saved yet): show the welcome screen. */
+  needsOnboarding: boolean;
+  startWithDemo(): void;
+  startEmpty(): void;
+  /** Remove only the sample data; the user's own items stay. */
+  removeDemo(): void;
+  /** Delete all projects, tasks, milestones and Today data (settings and columns stay). */
+  resetAll(): void;
   setBoardDay(day: string | null): void;
 
   init(): Promise<void>;
@@ -106,6 +115,24 @@ export const useAppStore = create<AppState>((set, get) => {
     loaded: false,
     openTaskId: null,
     boardDay: null,
+    needsOnboarding: false,
+
+    startWithDemo() {
+      const demo = seedData();
+      commit(() => ({ nodes: demo.nodes, milestones: demo.milestones, today: demo.today, needsOnboarding: false, openTaskId: null }));
+    },
+    startEmpty() {
+      commit(() => ({ needsOnboarding: false }));
+    },
+    removeDemo() {
+      const { nodes, columns, settings, today, milestones } = get();
+      const clean = stripDemo({ nodes, columns, settings, today, milestones });
+      commit(() => ({ nodes: clean.nodes, milestones: clean.milestones, today: clean.today, openTaskId: null }));
+    },
+    resetAll() {
+      commit(() => ({ nodes: [], milestones: [], today: defaultToday(), openTaskId: null, boardDay: null, needsOnboarding: true }));
+    },
+
     setBoardDay(day) {
       set({ boardDay: day });
     },
@@ -113,12 +140,10 @@ export const useAppStore = create<AppState>((set, get) => {
     init() {
       // Memoised so React StrictMode's double effect doesn't seed twice.
       initPromise ??= (async () => {
-        let data = await repo.load();
-        if (!data) {
-          data = seedData();
-          await repo.save(data);
-        }
-        set({ ...normalizeData(data), loaded: true });
+        const data = await repo.load();
+        // First launch: start empty and let the welcome screen offer the sample data.
+        if (!data) set({ loaded: true, needsOnboarding: true });
+        else set({ ...normalizeData(data), loaded: true });
       })();
       return initPromise;
     },

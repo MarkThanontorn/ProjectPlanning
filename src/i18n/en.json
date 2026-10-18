@@ -331,5 +331,19 @@
     "wbs": "Work breakdown, plans and progress",
     "gantt": "Timeline of the plan and task dependencies",
     "list": "Every task in one table — filter and sort"
+  },
+  "onboard": {
+    "title": "Welcome — how do you want to start?",
+    "sub": "Start for real right away, or explore with sample data first",
+    "empty": "Start fresh",
+    "emptyHint": "Begin with an empty planner and create your own projects",
+    "demo": "Explore sample data",
+    "demoHint": "Example projects, tasks and milestones — remove them any time",
+    "privacy": "Everything is stored only in this browser — nothing is sent anywhere. Back up with Export → Backup (.json).",
+    "banner": "Sample data is loaded — remove it when you're ready to use the planner for real (your own items stay)",
+    "remove": "Remove sample data",
+    "removeConfirm": "Remove all sample data? Items you created yourself will stay.",
+    "reset": "Delete all data / start over",
+    "resetConfirm": "Delete all projects, tasks, milestones and Today data and start over?\n(Settings, theme, team name and columns stay.)\n\nExport a backup (.json) first — this can't be undone."
   }
 }

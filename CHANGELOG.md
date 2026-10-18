@@ -10,6 +10,11 @@ Versions before 1.0.0 were reconstructed after the fact from the development his
 (dates are approximate). Only 1.0.0 onward exists in git, so earlier versions can be
 read about here but not checked out.
 
+## [1.1.0] — 2026-10-18
+- First launch shows a welcome screen: start empty, or explore with sample data.
+- Sample data is tagged; a banner offers "Remove sample data", which keeps your own items.
+- "Delete all data / start over" link in the sidebar (settings, theme, team name and columns stay).
+
 ## [1.0.1] — 2026-10-18
 - "What's new" follows the app language (Thai or English) and can be switched in the dialog.
   `CHANGELOG.md` stays English-only; the Thai copy lives in `src/i18n/changelog.th.md`.

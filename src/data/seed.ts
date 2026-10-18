@@ -1,9 +1,14 @@
 import { createNode, defaultColumns, defaultSettings, defaultToday } from '../domain/factory';
 import { shiftIsoDate, todayIso } from '../domain/calc';
 import type { AppData, WbsNode } from '../domain/types';
+import { markDemo } from '../domain/demo';
 
-/** Sample data mirroring the wireframe, with dates placed around today. */
+/** Sample data mirroring the wireframe, with dates placed around today. Every id is marked as demo. */
 export function seedData(now: Date = new Date()): AppData {
+  return markDemo(buildSeed(now));
+}
+
+function buildSeed(now: Date): AppData {
   const today = todayIso(now);
   const d = (offset: number) => shiftIsoDate(today, offset);
   const hoursAgo = (h: number) => new Date(now.getTime() - h * 3_600_000).toISOString();

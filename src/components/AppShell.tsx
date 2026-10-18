@@ -8,6 +8,7 @@ import { RunningTasks } from './RunningTasks';
 import { SidebarNav } from './SidebarNav';
 import { RoutineReminders } from './RoutineReminders';
 import { WhatsNew } from './WhatsNew';
+import { DemoBanner } from './Onboarding';
 
 function isAppData(x: unknown): x is AppData {
   const d = x as AppData;
@@ -17,7 +18,7 @@ function isAppData(x: unknown): x is AppData {
 export function AppShell({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   const settings = useAppStore((s) => s.settings);
-  const { updateSettings, replaceAll } = useAppStore();
+  const { updateSettings, replaceAll, resetAll } = useAppStore();
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [exportOpen, setExportOpen] = useState(false);
@@ -135,9 +136,18 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             v{__APP_VERSION__} · {t('app.whatsNew')}
           </button>
+          <button
+            className="w-full text-center text-[11px] text-slate-400 hover:text-rose-600 hover:underline"
+            onClick={() => confirm(t('onboard.resetConfirm')) && resetAll()}
+          >
+            {t('onboard.reset')}
+          </button>
         </div>
       </aside>
-      <main className="min-w-0 flex-1 p-6">{children}</main>
+      <main className="min-w-0 flex-1 p-6">
+        <DemoBanner />
+        {children}
+      </main>
       {showNews && <WhatsNew onClose={() => setShowNews(false)} />}
       <RoutineReminders />
     </div>
