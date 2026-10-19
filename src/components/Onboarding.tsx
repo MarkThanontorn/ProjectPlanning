@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { hasDemo } from '../domain/demo';
 import { useAppStore } from '../store/useAppStore';
+import { useTeamStore } from '../team/teamStore';
 
 /** First-launch choice: start empty (real use) or explore with sample data. */
 export function Welcome() {
@@ -28,6 +29,16 @@ export function Welcome() {
             <div className="text-sm text-slate-600">{t('onboard.demoHint')}</div>
           </button>
         </div>
+        <button
+          className="mt-3 w-full rounded-xl border-2 border-slate-200 p-3 text-left hover:border-sky-400 hover:bg-sky-50"
+          onClick={() => {
+            startEmpty();
+            useTeamStore.setState({ dialog: 'connect' });
+          }}
+        >
+          <span className="font-semibold text-slate-900">👥 {t('onboard.team')}</span>
+          <span className="ml-2 text-sm text-slate-600">{t('onboard.teamHint')}</span>
+        </button>
         <p className="mt-5 text-xs text-slate-400">{t('onboard.privacy')}</p>
       </div>
     </div>

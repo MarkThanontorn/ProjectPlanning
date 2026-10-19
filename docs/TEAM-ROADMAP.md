@@ -39,3 +39,11 @@ Suggested path: D now → option 3 for a small team (if the company uses M365/Go
 - Reminders while the app is closed need server-side notifications (Teams / email).
 
 The `Repository` interface (`src/data/repository.ts`) is the swap point; the UI does not need to change.
+
+## Status (2026-10-19)
+
+Option 2 (shared OneDrive / Box folder) is implemented as **team mode in 2.0.0**: one file per person,
+field-level merge, conflict alerts with a choice of value, edit history, deleted-items list, and
+non-blocking editing notices. Option 3 (Microsoft 365 / SharePoint via Graph) is the next step once
+team mode has proven itself; it would replace `src/team/folder.ts` + the file merge with a real
+server-side check, keeping the same UI.

@@ -20,6 +20,20 @@ npm run build
 ข้อมูลเก็บใน IndexedDB ของเบราว์เซอร์ — ใช้ปุ่ม Export/Import ที่แถบซ้ายเพื่อสำรองข้อมูล
 ถ้าจะต่อ Backend ภายหลัง ให้เขียน class ใหม่ที่ implement `Repository` แล้วสลับใน `src/store/useAppStore.ts`
 
+## Team mode (2.0.0)
+
+Shares one plan between a few people through a folder synced by OneDrive / Box — no server.
+
+- `src/team/model.ts` — every change is an op that sets one field of one record. Ops list the
+  ops they replaced (`seen`); a field whose newest ops didn't see each other is a conflict.
+- `src/team/client.ts` — one member's ops plus everyone else's files; resolve / restore; file formats.
+- `src/team/folder.ts` — File System Access API (Edge / Chrome). In dev, "Try with a test folder"
+  uses the browser's private file system instead of a real folder.
+- `src/team/teamStore.ts` — glue to the app store: sync loop, editing locks, notifications.
+- Folder contents: `<name>-<id>.data.json` (that person's ops) and `<name>-<id>.live.json`
+  (presence + what they're editing). Personal data (Today list, routines, settings, collapsed rows)
+  is never written there.
+
 ## Publishing
 - **Website:** every push to `master` builds and deploys to GitHub Pages
   (`.github/workflows/deploy.yml`) → `https://markthanontorn.github.io/ProjectPlanning/`.

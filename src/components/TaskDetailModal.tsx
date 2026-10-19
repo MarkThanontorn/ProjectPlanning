@@ -8,6 +8,7 @@ import { TimerButtons, TimeUsing } from './TaskCard';
 import { ActualLeadtimeCell, DateInput, InlineText, PlanLeadtimeCell, ProgressSlider } from './ui';
 import { EisenhowerControls } from './EisenhowerControls';
 import { DependencyEditor } from './DependencyEditor';
+import { TaskHistory, TaskTeamBar } from './team/TaskTeam';
 
 /** Task detail popup. Edits the same node as the WBS row, plus checklist and timer. */
 export function TaskDetailModal() {
@@ -61,6 +62,7 @@ export function TaskDetailModal() {
           </button>
         </div>
 
+        <TaskTeamBar nodeId={node.id} />
         <div className="space-y-2">
           <div className={field}>
             <span className="text-slate-500">{t('col.detail')}</span>
@@ -187,6 +189,7 @@ export function TaskDetailModal() {
           </div>
           <TimerButtons node={node} size="lg" />
         </div>
+        <TaskHistory nodeId={node.id} />
       </div>
     </div>
   );

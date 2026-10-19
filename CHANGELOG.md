@@ -10,6 +10,26 @@ Versions before 1.0.0 were reconstructed after the fact from the development his
 (dates are approximate). Only 1.0.0 onward exists in git, so earlier versions can be
 read about here but not checked out.
 
+## [2.0.0] — 2026-10-19
+Team mode: 2–3 people share one plan through a OneDrive / Box folder — no server needed.
+- Join from the sidebar ("Team mode") or the welcome screen: enter your name and pick the
+  shared folder (Edge / Chrome). The first person's data becomes the team's starting data;
+  people joining later can use the team's data or merge theirs in (a .json backup is downloaded first).
+- Each person writes only their own file in the folder; the app merges everyone's changes
+  field by field, so edits to different fields of the same task never overwrite each other.
+- "Sync" button, plus automatic sync every minute and when you return to the tab.
+  The sidebar lists members, when each last saved, and who is online.
+- Conflicts: when two people change the same field without seeing each other's change, both
+  are notified and shown each value with who set it and when; anyone picks the value to keep.
+  The newest value is shown until then. Delete-vs-edit is handled the same way (the item stays until decided).
+- Edit history per task (who changed what, when) with "Use this" to put an earlier value back.
+- Deleted items: a list of everything deleted in the team, restorable together with what was deleted with it.
+- Editing notice: while someone edits a task in its popup, others see "🔒 … is editing this task"
+  (also next to the name in WBS), can ask to be notified when they're done, and are never blocked.
+  Locks expire on their own (no heartbeat for 5 minutes, or 10 minutes without typing).
+- Personal things stay personal: your Today list, highlights, routines, collapsed rows and settings.
+- Leaving team mode keeps the latest data on this computer.
+
 ## [1.1.1] — 2026-10-18
 - Asks the browser for persistent storage, so data isn't evicted when disk space runs low;
   the sidebar shows whether it was granted and when the last backup was made.

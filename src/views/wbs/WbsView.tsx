@@ -1,4 +1,5 @@
 import { Fragment, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { NodeTeamBadge } from '../../components/team/TaskTeam';
 import { useTranslation } from 'react-i18next';
 import {
   closestCenter,
@@ -445,6 +446,7 @@ export function WbsView() {
                 onCommit={(v) => v.trim() && updateNode(node.id, { name: v.trim() })}
                 className={cx('cursor-pencil', KIND_STYLE[node.kind], node.status === 'done' && 'text-slate-400 line-through')}
               />
+              <NodeTeamBadge nodeId={node.id} />
               {/* Row actions float over the end of the name on hover, so names use the full width otherwise. */}
               <div className="absolute right-0 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded-lg bg-emerald-50/95 py-0.5 pl-3 shadow-[-12px_0_12px_-4px_rgb(var(--c-emerald-50)/0.95)] group-focus-within:flex group-hover:flex">
                 {canHaveChildren && (

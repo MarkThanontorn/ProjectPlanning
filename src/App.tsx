@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { initTeam } from './team/teamStore';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AppShell } from './components/AppShell';
@@ -21,7 +22,7 @@ export default function App() {
   const init = useAppStore((s) => s.init);
 
   useEffect(() => {
-    void init();
+    void init().then(initTeam);
   }, [init]);
 
   // Theme: explicit light/dark, or follow the operating system.

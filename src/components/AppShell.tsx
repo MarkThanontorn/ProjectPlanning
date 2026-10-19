@@ -10,6 +10,8 @@ import { RoutineReminders } from './RoutineReminders';
 import { WhatsNew } from './WhatsNew';
 import { DemoBanner } from './Onboarding';
 import { BackupReminder } from './BackupReminder';
+import { TeamOverlays, TeamPanel } from './team/TeamPanel';
+import { useTeamStore } from '../team/teamStore';
 
 function isAppData(x: unknown): x is AppData {
   const d = x as AppData;
@@ -21,6 +23,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const settings = useAppStore((s) => s.settings);
   const { updateSettings, replaceAll, resetAll } = useAppStore();
   const fileRef = useRef<HTMLInputElement>(null);
+  const teamOn = useTeamStore((s) => s.status !== 'off');
 
   const [exportOpen, setExportOpen] = useState(false);
   const [showNews, setShowNews] = useState(false);
@@ -59,6 +62,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <TeamName />
         </div>
         <SidebarNav />
+        <TeamPanel />
         <RunningTasks />
 
         <div className="space-y-3 border-t border-slate-200 p-4 text-sm">
@@ -141,12 +145,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             v{__APP_VERSION__} · {t('app.whatsNew')}
           </button>
           <StorageStatus />
-          <button
+          {!teamOn && <button
             className="w-full text-center text-[11px] text-slate-400 hover:text-rose-600 hover:underline"
             onClick={() => confirm(t('onboard.resetConfirm')) && resetAll()}
           >
             {t('onboard.reset')}
-          </button>
+          </button>}
         </div>
       </aside>
       <main className="min-w-0 flex-1 p-6">
@@ -156,6 +160,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </main>
       {showNews && <WhatsNew onClose={() => setShowNews(false)} />}
       <RoutineReminders />
+      <TeamOverlays />
     </div>
   );
 }

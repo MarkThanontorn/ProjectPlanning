@@ -34,6 +34,8 @@ interface AppState extends AppData {
 
   init(): Promise<void>;
   replaceAll(data: AppData): void;
+  /** Applies records merged from the team folder (not recorded as local edits). */
+  applyRemote(data: Pick<AppData, 'nodes' | 'milestones' | 'columns'>): void;
 
   addNode(parentId: string | null, kind: NodeKind, name: string): string;
   updateNode(id: string, patch: Partial<WbsNode>): void;
@@ -78,6 +80,13 @@ interface AppState extends AppData {
 
 let initPromise: Promise<void> | undefined;
 
+/** Called after every local change with the state before and after (team mode records it). */
+type CommitListener = (prev: AppData, next: AppData) => void;
+let commitListener: CommitListener | null = null;
+export const setCommitListener = (fn: CommitListener | null) => {
+  commitListener = fn;
+};
+
 /**
  * Asks the browser to keep this site's storage permanently, so IndexedDB isn't
  * evicted under storage pressure. Chrome/Edge decide silently (no prompt).
@@ -115,7 +124,9 @@ const persist = async (get: () => AppState) => {
 export const useAppStore = create<AppState>((set, get) => {
   /** Applies a change and schedules a save. */
   const commit = (fn: (s: AppState) => Partial<AppState>) => {
+    const prev = get();
     set(fn);
+    commitListener?.(prev, get());
     void persist(get);
   };
   const mapNode = (id: string, fn: (n: WbsNode) => WbsNode) =>
@@ -172,6 +183,11 @@ export const useAppStore = create<AppState>((set, get) => {
 
     replaceAll(data) {
       commit(() => ({ ...normalizeData(data), openTaskId: null }));
+    },
+
+    applyRemote(data) {
+      set((s) => ({ ...data, openTaskId: s.openTaskId && data.nodes.some((n) => n.id === s.openTaskId) ? s.openTaskId : null }));
+      void persist(get);
     },
 
     addNode(parentId, kind, name) {
