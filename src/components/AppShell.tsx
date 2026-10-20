@@ -10,6 +10,7 @@ import { RoutineReminders } from './RoutineReminders';
 import { WhatsNew } from './WhatsNew';
 import { DemoBanner } from './Onboarding';
 import { BackupReminder } from './BackupReminder';
+import { InstallButton, UpdateBanner } from './AppUpdate';
 import { TeamOverlays, TeamPanel } from './team/TeamPanel';
 import { useTeamStore } from '../team/teamStore';
 
@@ -137,6 +138,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               }}
             />
           </div>
+          <InstallButton />
           <button
             className="w-full text-center text-[11px] text-slate-400 hover:text-emerald-700 hover:underline"
             title={t('app.whatsNew')}
@@ -154,6 +156,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </aside>
       <main className="min-w-0 flex-1 p-6">
+        <UpdateBanner />
         <DemoBanner />
         <BackupReminder onBackup={() => void runExport('json')} />
         {children}

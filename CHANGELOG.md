@@ -10,6 +10,15 @@ Versions before 1.0.0 were reconstructed after the fact from the development his
 (dates are approximate). Only 1.0.0 onward exists in git, so earlier versions can be
 read about here but not checked out.
 
+## [2.1.0] — 2026-10-20
+- Install as an app (Edge / Chrome): an "Install as app" button in the sidebar, or the install icon
+  in the address bar. The app opens in its own window with its own icon, and uses the same data as the browser tab.
+- Works offline after the first visit.
+- New releases download in the background; a banner offers "Update now" when one is ready.
+- App icon and favicon.
+- The single-file .html can't be installed (browsers only install https sites); use a desktop
+  shortcut with `msedge.exe --app="file:///…/ProjectPlanning.html"` for a similar window.
+
 ## [2.0.1] — 2026-10-20
 Security hardening.
 - Team mode checks every teammate file before using it: malformed entries are skipped,

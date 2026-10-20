@@ -451,5 +451,11 @@
     "more": "Show {{n}} more",
     "badgeConflict": "Conflicting edits — open the task to choose",
     "badgeEditing": "{{name}} is editing this task"
+  },
+  "pwa": {
+    "updateReady": "A new version of the app is ready",
+    "updateNow": "Update now",
+    "install": "Install as app",
+    "installHint": "Opens in its own window without the address bar, with an icon in the Start menu / taskbar, and works offline (same data as in the browser)"
   }
 }

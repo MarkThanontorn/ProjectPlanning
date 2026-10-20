@@ -9,5 +9,8 @@ export default mergeConfig(
   defineConfig({
     plugins: [viteSingleFile()],
     build: { outDir: 'dist-single', emptyOutDir: true },
+    // Icons and the app manifest are only for the hosted (installable) version.
+    publicDir: false,
+    define: { __PWA__: 'false' },
   }),
 );
