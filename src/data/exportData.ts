@@ -1,4 +1,5 @@
 import { computeAll, flattenTree, leadtimeParts, loggedHours, round2, todayIso } from '../domain/calc';
+import { csvSafe } from '../domain/sanitize';
 import type { AppData, WbsNode } from '../domain/types';
 
 /**
@@ -98,7 +99,7 @@ export function toCsv(rows: Row[]): string {
   if (rows.length === 0) return '﻿';
   const headers = Object.keys(rows[0]);
   const cell = (v: unknown) => {
-    const s = v == null ? '' : String(v);
+    const s = v == null ? '' : typeof v === 'string' ? csvSafe(v) : String(v);
     return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   return '﻿' + [headers.map(cell).join(','), ...rows.map((r) => headers.map((h) => cell(r[h])).join(','))].join('\r\n');

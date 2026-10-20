@@ -8,6 +8,7 @@
  * several heads: if their values differ, that is a conflict the team resolves
  * by picking one value (a new op that sees them all).
  */
+import { safeKey, sanitizeColumn, sanitizeMilestone, sanitizeNode } from '../domain/sanitize';
 import type { ColumnDef, Milestone, WbsNode } from '../domain/types';
 
 export type EntityType = 'node' | 'milestone' | 'column';
@@ -91,6 +92,29 @@ export interface Materialized {
 }
 
 export const fieldKey = (t: EntityType, e: string, f: string) => `${t}|${e}|${f}`;
+
+/** Field names we accept from other people's files. */
+export const safeField = (f: string) => safeKey(f) && (!f.startsWith('custom.') || safeKey(f.slice(7)));
+
+/** An op read from someone else's file is only used when well-formed and really theirs. */
+export function validOp(o: unknown, owner: string): o is Op {
+  const x = o as Op;
+  return (
+    !!x &&
+    typeof x === 'object' &&
+    typeof x.id === 'string' &&
+    x.by === owner &&
+    typeof x.at === 'string' &&
+    !Number.isNaN(Date.parse(x.at)) &&
+    ENTITY_TYPES.includes(x.t) &&
+    typeof x.e === 'string' &&
+    x.e.length > 0 &&
+    typeof x.f === 'string' &&
+    safeField(x.f) &&
+    Array.isArray(x.seen) &&
+    x.seen.every((s) => typeof s === 'string')
+  );
+}
 export const entityKey = (t: EntityType, e: string) => `${t}|${e}`;
 
 /** JSON with sorted object keys, so equal values compare equal. */
@@ -111,10 +135,10 @@ export const same = (a: unknown, b: unknown) => stable(a) === stable(b);
 export function toFields(t: EntityType, rec: object): Rec {
   const out: Rec = {};
   for (const [k, v] of Object.entries(rec)) {
-    if (k === 'id' || v === undefined) continue;
+    if (k === 'id' || v === undefined || !safeKey(k)) continue;
     if (t === 'node' && PERSONAL_NODE_FIELDS.has(k)) continue;
     if (t === 'node' && k === 'custom') {
-      for (const [ck, cv] of Object.entries(v as Rec)) out[`custom.${ck}`] = cv;
+      if (v && typeof v === 'object') for (const [ck, cv] of Object.entries(v as Rec)) if (safeKey(ck)) out[`custom.${ck}`] = cv;
       continue;
     }
     out[k] = v;
@@ -126,6 +150,7 @@ export function fromFields(t: EntityType, id: string, fields: Rec): Rec {
   const rec: Rec = { id };
   if (t === 'node') rec.custom = {};
   for (const [k, v] of Object.entries(fields)) {
+    if (!safeField(k)) continue;
     if (k.startsWith('custom.')) {
       if (v !== null && v !== undefined && v !== '') (rec.custom as Rec)[k.slice(7)] = v;
     } else if (!(v === null && t === 'column')) rec[k] = v;
@@ -144,7 +169,9 @@ const newest = (ops: Op[]) => [...ops].sort(byTime)[ops.length - 1];
 function mergeTimeLogs(heads: Op[]) {
   const byStart = new Map<string, { start: string; end: string | null }>();
   for (const h of [...heads].sort(byTime)) {
-    for (const log of (h.v as { start: string; end: string | null }[]) ?? []) {
+    if (!Array.isArray(h.v)) continue;
+    for (const log of h.v as { start: string; end: string | null }[]) {
+      if (!log || typeof log.start !== 'string') continue;
       const prev = byStart.get(log.start);
       if (!prev || log.end !== null) byStart.set(log.start, log);
     }
@@ -186,7 +213,9 @@ export function materialize(ops: Op[]): Materialized {
   for (const [ek, ent] of entities) {
     const create = groups.get(fieldKey(ent.t, ent.e, CREATE));
     if (!create) continue; // its creator's file is missing: nothing to build on
-    const fields = toFields(ent.t, newest(create).v as Rec);
+    const createV = newest(create).v;
+    if (!createV || typeof createV !== 'object') continue;
+    const fields = toFields(ent.t, createV as Rec);
     for (const k of ent.keys) {
       const f = k.slice(ent.t.length + ent.e.length + 2);
       if (f === CREATE || f === DELETED) continue;
@@ -276,16 +305,20 @@ export function materialize(ops: Op[]): Materialized {
       continue;
     }
     if (t === 'node') {
-      const n = rec as unknown as WbsNode;
+      const n = sanitizeNode(rec);
+      if (!n) continue;
       data.nodes.push({
         ...n,
         parentId: n.parentId && liveNodes.has(n.parentId) ? n.parentId : null,
         dependsOn: (n.dependsOn ?? []).filter((d) => liveNodes.has(d)),
       });
     } else if (t === 'milestone') {
-      const m = rec as unknown as Milestone;
-      if (liveNodes.has(m.projectId)) data.milestones.push(m);
-    } else data.columns.push(rec as unknown as ColumnDef);
+      const m: Milestone | null = sanitizeMilestone(rec);
+      if (m && liveNodes.has(m.projectId)) data.milestones.push(m);
+    } else {
+      const c: ColumnDef | null = sanitizeColumn(rec);
+      if (c) data.columns.push(c);
+    }
   }
   trash.sort((a, b) => (a.at < b.at ? 1 : -1));
   return { data, heads, conflicts, trash, records };

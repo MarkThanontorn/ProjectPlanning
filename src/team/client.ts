@@ -11,6 +11,7 @@ import {
   type Materialized,
   type Op,
   type SharedData,
+  validOp,
 } from './model';
 
 export const DATA_FORMAT = 'pp-team/1';
@@ -71,8 +72,10 @@ export class TeamClient {
     this.mat = materialize(this.allOps());
   }
 
-  private addOther(f: DataFile) {
-    if (f.userId === this.me.id) return;
+  private addOther(raw: DataFile) {
+    if (raw.userId === this.me.id) return;
+    // Ignore anything malformed, and ops claiming to be someone else's.
+    const f: DataFile = { ...raw, name: String(raw.name ?? '?'), ops: raw.ops.filter((o) => validOp(o, raw.userId)) };
     const prev = this.others.get(f.userId);
     if (!prev) return void this.others.set(f.userId, f);
     // Two files for one person (e.g. a cloud "conflicted copy"): keep every op, newer file wins per op.
@@ -234,11 +237,14 @@ const opIdFor = opId;
 
 export function isDataFile(x: unknown): x is DataFile {
   const d = x as DataFile;
-  return !!d && d.format === DATA_FORMAT && typeof d.userId === 'string' && Array.isArray(d.ops);
+  return !!d && d.format === DATA_FORMAT && typeof d.userId === 'string' && typeof d.savedAt === 'string' && Array.isArray(d.ops);
 }
 export function isLiveFile(x: unknown): x is LiveFile {
   const d = x as LiveFile;
-  return !!d && d.format === LIVE_FORMAT && typeof d.userId === 'string';
+  if (!d || d.format !== LIVE_FORMAT || typeof d.userId !== 'string' || typeof d.name !== 'string' || typeof d.beat !== 'string') return false;
+  const e = d.editing;
+  if (e !== null && (typeof e !== 'object' || typeof e.e !== 'string' || typeof e.since !== 'string' || typeof e.beat !== 'string')) d.editing = null;
+  return true;
 }
 
 /** File base name for a member: readable name + short id (stays unique if two people share a name). */

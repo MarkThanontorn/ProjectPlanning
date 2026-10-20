@@ -46,12 +46,13 @@ export function fmtValue(f: string, v: unknown, t: TFunction): string {
   if (f === 'status') return t(`status.${v}`);
   if (f === 'kind') return t(`kind.${v}`);
   if (f === 'parentId') return nodeName(String(v));
-  if (f === 'dependsOn') return (v as string[]).map(nodeName).join(', ') || '—';
+  if (f === 'dependsOn') return Array.isArray(v) ? v.map((x) => nodeName(String(x))).join(', ') || '—' : '—';
   if (f === 'checklist') {
-    const items = v as { text: string; done: boolean }[];
-    return items.map((i) => `${i.done ? '☑' : '☐'} ${i.text}`).join(' · ') || '—';
+    if (!Array.isArray(v)) return '—';
+    return v.map((i) => `${i?.done ? '☑' : '☐'} ${String(i?.text ?? '')}`).join(' · ') || '—';
   }
-  if (f === 'timeLogs') return t('team.logs', { n: (v as unknown[]).length });
+  if (f === 'timeLogs') return t('team.logs', { n: Array.isArray(v) ? v.length : 0 });
+  if (typeof v === 'object' && f !== 'eisenhower') return '…';
   if (f === 'eisenhower') {
     const e = v as { important: boolean | null; urgent: boolean | null };
     const ax = (x: boolean | null) => (x === null ? t('team.auto') : x ? '✓' : '✗');

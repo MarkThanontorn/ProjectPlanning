@@ -14,6 +14,7 @@ import {
   watchLock,
 } from '../../team/teamStore';
 import { cx } from '../ui';
+import { sanitizeNode } from '../../domain/sanitize';
 import { fieldLabel, fmtAgo, fmtValue, fmtWhen } from './format';
 import { DeleteConflictCard, FieldConflictCard } from './TeamPanel';
 
@@ -95,8 +96,10 @@ export function TaskHistory({ nodeId }: { nodeId: string }) {
   const putBack = (f: string, v: unknown) => {
     const node = useAppStore.getState().nodes.find((n) => n.id === nodeId);
     if (!node) return;
-    if (f.startsWith('custom.')) updateNode(nodeId, { custom: { ...node.custom, [f.slice(7)]: String(v ?? '') } });
-    else updateNode(nodeId, { [f]: v });
+    if (f.startsWith('custom.')) return updateNode(nodeId, { custom: { ...node.custom, [f.slice(7)]: String(v ?? '') } });
+    // Old values come from other people's files: clean them like any incoming data.
+    const fixed = sanitizeNode({ ...node, [f]: v });
+    if (fixed && f in fixed) updateNode(nodeId, { [f]: fixed[f as keyof typeof fixed] });
   };
 
   return (

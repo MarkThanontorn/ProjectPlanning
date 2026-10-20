@@ -10,6 +10,19 @@ Versions before 1.0.0 were reconstructed after the fact from the development his
 (dates are approximate). Only 1.0.0 onward exists in git, so earlier versions can be
 read about here but not checked out.
 
+## [2.0.1] — 2026-10-20
+Security hardening.
+- Team mode checks every teammate file before using it: malformed entries are skipped,
+  values are cleaned to the right type, and entries claiming to come from someone else are ignored.
+  A damaged file in the team folder can no longer crash the app for everyone.
+- Imported .json backups go through the same checks.
+- CSV export: text starting with `=`, `+`, `-` or `@` is kept as text, so it can't run as a
+  spreadsheet formula when opened in Excel.
+- Content Security Policy on the web app and the single-file app: the app can only load its own
+  code, styles and fonts, and can't send data to any other site.
+- The font (IBM Plex Sans Thai) is now part of the app instead of loading from Google Fonts —
+  after loading, the app makes no internet requests at all.
+
 ## [2.0.0] — 2026-10-19
 Team mode: 2–3 people share one plan through a OneDrive / Box folder — no server needed.
 - Join from the sidebar ("Team mode") or the welcome screen: enter your name and pick the
