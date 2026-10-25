@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { KIND_ACCENT, KIND_ICON, KIND_ICON_COLOR, KIND_ROW_BG, KIND_TEXT } from '../../kindStyle';
 import { useTranslation } from 'react-i18next';
 import {
   addDays,
@@ -24,7 +25,7 @@ import {
 import { childrenMap, flattenTree, shiftIsoDate, todayIso, toIsoDate } from '../../domain/calc';
 import { blockers, depsOf, wouldCycle } from '../../domain/deps';
 import type { Computed, GanttScale, WbsNode } from '../../domain/types';
-import { useComputed, useNow } from '../../hooks';
+import { useComputed, useFitToViewport, useNow } from '../../hooks';
 import { useAppStore } from '../../store/useAppStore';
 import { cx, InlineText, ViewTitle } from '../../components/ui';
 import { ProjectMilestoneModal } from '../../components/MilestoneEditor';
@@ -221,6 +222,7 @@ export function GanttView() {
   const computed = useComputed(now);
   const [drag, setDrag] = useState<DragState | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  useFitToViewport(scrollRef);
   /** Days added beyond the data on each side by scrolling toward the edges. */
   const [extra, setExtra] = useState({ before: 0, after: 0 });
   /** Date to center on after the next scale change (set by click-to-zoom). */
@@ -497,23 +499,36 @@ export function GanttView() {
     if (!leaf)
       return (
         <div
-          className="absolute top-1/2 z-[6] h-3 -translate-y-1/2 overflow-hidden rounded-sm bg-slate-300"
+          className={cx(
+            'absolute top-1/2 z-[6] h-3.5 -translate-y-1/2 overflow-hidden rounded-sm border',
+            node.kind === 'project' ? 'border-emerald-600 bg-emerald-200' : 'border-violet-500 bg-violet-200',
+          )}
           style={{ left, width }}
           title={`${node.name}: ${text} · ${c.progress}%`}
         >
-          <div className="h-full bg-slate-700" style={{ width: `${c.progress}%` }} />
+          <div className={cx('h-full', node.kind === 'project' ? 'bg-emerald-600' : 'bg-violet-500')} style={{ width: `${c.progress}%` }} />
         </div>
       );
 
     const linkTarget = link && link.overId === node.id && link.fromId !== node.id;
+    /** Past Plan End and not finished. */
+    const late = node.status !== 'done' && plan.planEnd < today;
     return (
       <>
       <div
         data-task-id={node.id}
         className={cx(
-          'absolute top-1/2 z-[6] h-6 -translate-y-1/2 cursor-grab touch-none overflow-hidden rounded border bg-slate-100 shadow-sm active:cursor-grabbing',
-          dragging ? 'border-emerald-600 ring-2 ring-emerald-400' : linkTarget ? 'border-sky-600 ring-2 ring-sky-400' : 'border-slate-400',
-          node.status === 'done' && 'opacity-70',
+          'absolute top-1/2 z-[6] h-6 -translate-y-1/2 cursor-grab touch-none overflow-hidden rounded border-2 shadow-sm active:cursor-grabbing',
+          node.status === 'done' ? 'bg-emerald-200' : late ? 'bg-rose-100' : 'bg-sky-200',
+          dragging
+            ? 'border-emerald-600 ring-2 ring-emerald-400'
+            : linkTarget
+              ? 'border-sky-600 ring-2 ring-sky-400'
+              : node.status === 'done'
+                ? 'border-emerald-500'
+                : late
+                  ? 'border-rose-500'
+                  : 'border-sky-500',
         )}
         style={{ left, width }}
         title={`${node.name}: ${text} · ${node.progress}%`}
@@ -522,8 +537,8 @@ export function GanttView() {
         onPointerUp={endDrag}
         onPointerCancel={() => setDrag(null)}
       >
-        <div className="h-full bg-emerald-700" style={{ width: `${node.progress}%` }} />
-        <span className="pointer-events-none absolute inset-0 flex items-center px-2 text-[11px] font-medium text-slate-900 mix-blend-multiply">
+        <div className="h-full bg-emerald-500" style={{ width: `${node.progress}%` }} />
+        <span className="pointer-events-none absolute inset-0 flex items-center px-2 text-[11px] font-semibold text-slate-900">
           {width > 90 ? text : ''}
         </span>
         {width > 12 &&
@@ -615,7 +630,7 @@ export function GanttView() {
         }
       />
 
-      <div ref={scrollRef} onScroll={onScroll} className="relative max-h-[calc(100vh-9.5rem)] overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div ref={scrollRef} onScroll={onScroll} className="relative overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <div className="relative" style={{ width: NAME_W + timelineW }}>
           {/* Header */}
           <div className="sticky top-0 z-30 flex border-b border-slate-300 bg-slate-100">
@@ -647,9 +662,13 @@ export function GanttView() {
               const hasKids = (kids.get(node.id) ?? []).length > 0;
               const blocked = c.isLeaf && node.status !== 'done' && blockers(node, nodes).length > 0;
               return (
-                <div key={node.id} className="group/row flex border-b border-slate-100 hover:bg-emerald-50/30" style={{ height: ROW_H }}>
+                <div
+                  key={node.id}
+                  className={cx('group/row flex border-b border-slate-200/70 hover:bg-amber-50/40', node.kind === 'project' ? 'bg-emerald-50/50' : node.kind === 'group' && 'bg-violet-50/40 dark:bg-slate-200/40')}
+                  style={{ height: ROW_H }}
+                >
                   <div
-                    className="sticky left-0 z-20 flex shrink-0 items-center gap-1 border-r border-slate-200 bg-white text-sm"
+                    className={cx('sticky left-0 z-20 flex shrink-0 items-center gap-1 border-r border-slate-200 text-sm', KIND_ROW_BG[node.kind], KIND_ACCENT[node.kind])}
                     style={{ width: NAME_W, paddingLeft: `${c.depth * 1.25 + 0.5}rem` }}
                   >
                     {hasKids ? (
@@ -657,7 +676,7 @@ export function GanttView() {
                         {node.collapsed ? '▶' : '▼'}
                       </button>
                     ) : (
-                      <span className="w-5" />
+                      <span className={cx('w-5 text-center', KIND_ICON_COLOR[node.kind])}>{KIND_ICON[node.kind]}</span>
                     )}
                     {editingId === node.id ? (
                       <InlineText
@@ -671,8 +690,8 @@ export function GanttView() {
                       <button
                         className={cx(
                           'cursor-pencil min-w-0 truncate text-left hover:underline',
-                          node.kind === 'project' ? 'font-bold' : node.kind === 'group' ? 'font-semibold' : '',
-                          node.status === 'done' && 'text-slate-400 line-through',
+                          KIND_TEXT[node.kind],
+                          node.status === 'done' && '!text-slate-400 line-through',
                         )}
                         title={t('gantt.renameHint')}
                         onClick={() => setEditingId(node.id)}
@@ -730,6 +749,18 @@ export function GanttView() {
                       </div>
                     )}
                     {renderBar(node, c, rowIdx)}
+                    {node.dueDate && (
+                      <div
+                        className={cx(
+                          'pointer-events-auto absolute top-0 z-[9] -translate-x-1/2 text-sm leading-none drop-shadow-sm',
+                          node.status === 'done' ? 'text-emerald-600' : node.dueDate < today ? 'text-rose-600' : 'text-amber-500',
+                        )}
+                        style={{ left: x(node.dueDate) + dayW / 2, top: 1 }}
+                        title={t('gantt.dueHint', { date: format(parseISO(node.dueDate), 'd MMM yyyy') })}
+                      >
+                        ⚑
+                      </div>
+                    )}
                     {node.parentId === null &&
                       milestones
                         .filter((m) => m.projectId === node.id)

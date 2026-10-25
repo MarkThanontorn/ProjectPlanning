@@ -10,6 +10,17 @@ Versions before 1.0.0 were reconstructed after the fact from the development his
 (dates are approximate). Only 1.0.0 onward exists in git, so earlier versions can be
 read about here but not checked out.
 
+## [2.2.0] — 2026-10-25
+- Project / Group / Task are easy to tell apart in WBS and Gantt, in light and dark mode:
+  Project = green, Group = purple (grey row in dark mode), each with a coloured bar and icon.
+- Gantt bars are clearer: tasks not started yet are solid blue, overdue tasks red, finished tasks green;
+  Project and Group summary bars in their own colours.
+- Gantt shows a ⚑ flag on each Due Date (amber = upcoming, red = overdue, green = done).
+- WBS header stays visible while scrolling, and the sideways scroll bar is always on screen (as in Gantt).
+  Both tables now fit the window even when a notice banner is shown.
+- Drop-down lists, date pickers and scroll bars follow dark mode.
+- Language buttons read TH / EN.
+
 ## [2.1.0] — 2026-10-20
 - Install as an app (Edge / Chrome): an "Install as app" button in the sidebar, or the install icon
   in the address bar. The app opens in its own window with its own icon, and uses the same data as the browser tab.

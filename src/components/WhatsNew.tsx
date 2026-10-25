@@ -79,7 +79,7 @@ export function WhatsNew({ onClose }: { onClose: () => void }) {
                   className={l === lang ? 'bg-slate-800 px-2.5 py-1 font-medium text-white' : 'px-2.5 py-1 hover:bg-slate-100'}
                   onClick={() => setLang(l)}
                 >
-                  {l === 'th' ? 'ไทย' : 'EN'}
+                  {l === 'th' ? 'TH' : 'EN'}
                 </button>
               ))}
             </div>

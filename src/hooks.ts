@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { computeAll } from './domain/calc';
 import { useAppStore } from './store/useAppStore';
 
@@ -26,4 +26,27 @@ export function useLeafTasks() {
     const parents = new Set(nodes.map((n) => n.parentId));
     return nodes.filter((n) => n.kind === 'task' && !parents.has(n.id));
   }, [nodes]);
+}
+
+/**
+ * Caps an element's height to the space left below it on screen, so its own scrollbars
+ * (both directions) stay visible — whatever banners or toolbars sit above it.
+ */
+export function useFitToViewport(ref: React.RefObject<HTMLElement>, margin = 16) {
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const fit = () => {
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      el.style.maxHeight = `${Math.max(240, window.innerHeight - top - margin)}px`;
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    const ro = new ResizeObserver(fit);
+    ro.observe(document.body);
+    return () => {
+      window.removeEventListener('resize', fit);
+      ro.disconnect();
+    };
+  }, [ref, margin]);
 }

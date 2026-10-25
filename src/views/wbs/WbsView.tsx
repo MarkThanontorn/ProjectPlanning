@@ -22,7 +22,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { canPlace, childrenMap } from '../../domain/calc';
 import { scheduleConflicts } from '../../domain/deps';
 import { RANKS, STATUSES, type ColumnDef, type Computed, type NodeKind, type Rank, type Status, type WbsNode } from '../../domain/types';
-import { useComputed, useNow } from '../../hooks';
+import { useComputed, useFitToViewport, useNow } from '../../hooks';
 import { useAppStore } from '../../store/useAppStore';
 import {
   ActualLeadtimeCell,
@@ -40,12 +40,13 @@ import { ColumnManager } from './ColumnManager';
 import { ResizeHandle } from '../../components/ResizeHandle';
 import { CompleteToggle, HideCompletedToggle } from '../../components/completion';
 import { completedIds } from '../../domain/completion';
+import { KIND_ACCENT, KIND_ICON, KIND_ICON_COLOR, KIND_ROW_BG, KIND_TEXT } from '../../kindStyle';
 
-const KIND_ICON: Record<NodeKind, string> = { project: '◆', group: '▸', task: '•' };
-const KIND_STYLE: Record<NodeKind, string> = {
-  project: 'font-bold text-slate-900',
-  group: 'font-semibold text-slate-800',
-  task: 'text-slate-800',
+const KIND_STYLE = KIND_TEXT;
+const KIND_HOVER: Record<NodeKind, string> = {
+  project: 'group-hover:bg-emerald-100',
+  group: 'group-hover:bg-violet-100 dark:group-hover:bg-slate-300',
+  task: 'group-hover:bg-slate-50',
 };
 
 const PLANNING_COLUMNS = new Set(['planStart', 'planEnd', 'leadtime']);
@@ -89,10 +90,10 @@ function SortableHeader({
       title={tip}
       style={{ transform: CSS.Translate.toString(transform), transition, left: col.pinned ? stickyLeft : undefined, ...widthStyle(width) }}
       className={cx(
-        'group/th relative cursor-grab select-none overflow-hidden truncate whitespace-nowrap border-b border-slate-300 bg-slate-100 px-2 py-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 active:cursor-grabbing',
-        col.pinned && 'sticky z-[3] bg-sky-50',
+        'group/th sticky top-0 z-[2] cursor-grab select-none overflow-hidden truncate whitespace-nowrap border-b border-slate-300 bg-slate-100 px-2 py-2 pr-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 shadow-[0_1px_0_rgb(var(--c-slate-300))] active:cursor-grabbing',
+        col.pinned && 'z-[4] bg-sky-50',
         lastPinned && 'border-r-2 border-r-sky-300',
-        isDragging && 'relative z-10 bg-emerald-100 shadow',
+        isDragging && 'z-10 bg-emerald-100 shadow',
       )}
       {...attributes}
       {...listeners}
@@ -282,6 +283,8 @@ function Cell({ col, node, c }: { col: ColumnDef; node: WbsNode; c: Computed }) 
 }
 
 export function WbsView() {
+  const scrollBoxRef = useRef<HTMLDivElement>(null);
+  useFitToViewport(scrollBoxRef);
   const { t } = useTranslation();
   const nodes = useAppStore((s) => s.nodes);
   const columns = useAppStore((s) => s.columns);
@@ -414,12 +417,12 @@ export function WbsView() {
         <DndRow
           node={node}
           drop={rowDrop?.targetId === node.id ? rowDrop.pos : null}
-          className={cx('group border-b border-slate-100 hover:bg-emerald-50/40', node.kind === 'project' && 'bg-slate-50')}
+          className={cx('group border-b border-slate-200/70', KIND_ROW_BG[node.kind], KIND_HOVER[node.kind])}
         >
           {(handle) => (
           <>
           <td
-            className="sticky left-0 z-[1] border-r border-slate-200 bg-inherit bg-white py-1 pr-1 group-hover:bg-emerald-50"
+            className={cx('sticky left-0 z-[1] border-r border-slate-200 py-1 pr-1', KIND_ROW_BG[node.kind], KIND_HOVER[node.kind], KIND_ACCENT[node.kind])}
             style={{ ...indent(c.depth), ...widthStyle(nameWidth) }}
           >
             <div className="relative flex items-center gap-1">
@@ -438,7 +441,7 @@ export function WbsView() {
                   {node.collapsed ? '▶' : '▼'}
                 </button>
               ) : (
-                <span className="w-5 text-center text-slate-400">{KIND_ICON[node.kind]}</span>
+                <span className={cx('w-5 text-center', KIND_ICON_COLOR[node.kind])}>{KIND_ICON[node.kind]}</span>
               )}
               <InlineText
                 value={node.name}
@@ -474,7 +477,7 @@ export function WbsView() {
               key={col.id}
               className={cx(
                 'overflow-hidden whitespace-nowrap px-2 py-1 align-middle text-sm',
-                col.pinned && 'sticky z-[1] bg-white group-hover:bg-emerald-50',
+                col.pinned && cx('sticky z-[1]', KIND_ROW_BG[node.kind], KIND_HOVER[node.kind]),
                 col.id === lastPinnedId && 'border-r-2 border-r-sky-200',
               )}
               style={{ ...(col.pinned ? { left: pinLeft[col.id] ?? 0 } : {}), ...widthStyle(colWidth(col)) }}
@@ -526,7 +529,7 @@ export function WbsView() {
         }
       />
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div ref={scrollBoxRef} className="overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <DndContext
           sensors={sensors}
           collisionDetection={collision}
@@ -548,7 +551,7 @@ export function WbsView() {
                 <tr>
                   <th
                     ref={nameHeaderRef}
-                    className="sticky left-0 z-[4] border-b border-r border-slate-300 bg-slate-100 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-600"
+                    className="sticky left-0 top-0 z-[5] border-b border-r border-slate-300 bg-slate-100 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 shadow-[0_1px_0_rgb(var(--c-slate-300))]"
                     style={widthStyle(nameWidth)}
                   >
                     {t('col.name')}

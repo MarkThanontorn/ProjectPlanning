@@ -158,7 +158,8 @@
     "extendHint": "Scroll to either edge to extend the timeline",
     "zoomHint": "Click an empty slot or a header cell to zoom in (Year → Quarter → Week → Day)",
     "createHint": "Day view: click an empty slot in a row to create a task on that day",
-    "created": "Task created for {{date}} — type its name"
+    "created": "Task created for {{date}} — type its name",
+    "dueHint": "Due date: {{date}}"
   },
   "list": {
     "search": "Search…",

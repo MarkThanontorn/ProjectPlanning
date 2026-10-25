@@ -86,7 +86,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 className={cx('flex-1 py-1.5 font-medium', settings.lang === lng ? 'bg-slate-800 text-white' : 'hover:bg-slate-100')}
                 onClick={() => updateSettings({ lang: lng })}
               >
-                {lng === 'th' ? 'ไทย' : 'EN'}
+                {lng === 'th' ? 'TH' : 'EN'}
               </button>
             ))}
           </div>
