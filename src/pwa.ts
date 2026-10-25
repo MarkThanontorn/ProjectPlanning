@@ -57,6 +57,8 @@ export function registerPwa() {
     // Look for a new release when the app comes back into view, and hourly while open.
     document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && void reg.update());
     setInterval(() => void reg.update(), 60 * 60_000);
+  }).catch(() => {
+    // Service workers blocked (browser policy / embedded browser): the app still works, just not offline.
   });
 }
 

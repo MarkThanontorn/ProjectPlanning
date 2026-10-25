@@ -1,4 +1,17 @@
-import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  pointerWithin,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DraggableAttributes,
+  type DraggableSyntheticListeners,
+} from '@dnd-kit/core';
+import { DROP_PREFIX, ROW_PREFIX, rowDropFor, sameDrop, type DropPos, type RowDrop } from '../../components/rowDnd';
 import { KIND_ACCENT, KIND_ICON, KIND_ICON_COLOR, KIND_ROW_BG, KIND_ROW_BORDER, KIND_TEXT } from '../../kindStyle';
 import { useTranslation } from 'react-i18next';
 import {
@@ -185,7 +198,7 @@ export function GanttView() {
   const { t } = useTranslation();
   const nodes = useAppStore((s) => s.nodes);
   const scale = useAppStore((s) => s.settings.ganttScale);
-  const { updateNode, toggleCollapsed, openTask, updateSettings, addDependency, removeDependency, addNode, deleteNode } = useAppStore();
+  const { updateNode, toggleCollapsed, openTask, updateSettings, addDependency, removeDependency, addNode, deleteNode, moveNodeTo } = useAppStore();
   const milestones = useAppStore((s) => s.milestones);
   const updateMilestone = useAppStore((s) => s.updateMilestone);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -238,6 +251,12 @@ export function GanttView() {
   const hideCompleted = useAppStore((s) => s.settings.hideCompleted);
   const hiddenIds = useMemo(() => (hideCompleted ? completedIds(nodes) : new Set<string>()), [hideCompleted, nodes]);
   const rows = flattenTree(nodes).filter((n) => !hiddenIds.has(n.id));
+
+  /** Moving rows (same rules as WBS): drag the ⠿ handle onto another row. */
+  const rowSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  const [rowDragId, setRowDragId] = useState<string | null>(null);
+  const [rowDrop, setRowDrop] = useState<RowDrop | null>(null);
+  const draggedRow = rowDragId ? nodes.find((n) => n.id === rowDragId) : undefined;
   const kids = childrenMap(nodes);
 
   const range = useMemo(() => {
@@ -663,6 +682,25 @@ export function GanttView() {
           <TimeGrid cells={bottomCells} left={NAME_W} top={headerH} width={timelineW} />
 
           {/* Rows */}
+          <DndContext
+            sensors={rowSensors}
+            collisionDetection={pointerWithin}
+            onDragStart={(e) => setRowDragId(String(e.active.id).slice(ROW_PREFIX.length))}
+            onDragMove={(e) => {
+              const next = rowDropFor(e, nodes, kids);
+              setRowDrop((prev) => (sameDrop(prev, next) ? prev : next));
+            }}
+            onDragEnd={(e) => {
+              const drop = rowDropFor(e, nodes, kids);
+              if (drop) moveNodeTo(String(e.active.id).slice(ROW_PREFIX.length), drop.parentId, drop.index);
+              setRowDragId(null);
+              setRowDrop(null);
+            }}
+            onDragCancel={() => {
+              setRowDragId(null);
+              setRowDrop(null);
+            }}
+          >
           <div ref={rowsRef} className="relative">
             {rows.map((node, rowIdx) => {
               const c = computed.get(node.id);
@@ -670,15 +708,29 @@ export function GanttView() {
               const hasKids = (kids.get(node.id) ?? []).length > 0;
               const blocked = c.isLeaf && node.status !== 'done' && blockers(node, nodes).length > 0;
               return (
-                <div
+                <GanttDndRow
                   key={node.id}
+                  node={node}
+                  drop={rowDrop?.targetId === node.id ? rowDrop.pos : null}
                   className={cx('group/row flex border-b border-slate-200/70 hover:bg-slate-50/60', KIND_ROW_BORDER[node.kind])}
                   style={{ height: ROW_H }}
                 >
+                  {(handle) => (
+                  <>
                   <div
                     className={cx('sticky left-0 z-20 flex shrink-0 items-center gap-1 border-r border-slate-200 text-sm', KIND_ROW_BG[node.kind], KIND_ACCENT[node.kind])}
                     style={{ width: NAME_W, paddingLeft: `${c.depth * 1.25 + 0.5}rem` }}
                   >
+                    <button
+                      ref={handle.setActivatorNodeRef}
+                      {...handle.listeners}
+                      {...handle.attributes}
+                      title={t('wbs.dragRow')}
+                      aria-label={t('wbs.dragRow')}
+                      className="-ml-1.5 w-4 shrink-0 cursor-grab touch-none text-slate-300 hover:text-slate-600 active:cursor-grabbing group-hover/row:text-slate-400"
+                    >
+                      ⠿
+                    </button>
                     {hasKids ? (
                       <button className="w-5 text-slate-500 hover:text-slate-900" onClick={() => toggleCollapsed(node.id)} aria-label="toggle">
                         {node.collapsed ? '▶' : '▼'}
@@ -823,7 +875,9 @@ export function GanttView() {
                           );
                         })}
                   </div>
-                </div>
+                  </>
+                  )}
+                </GanttDndRow>
               );
             })}
 
@@ -882,6 +936,15 @@ export function GanttView() {
               )}
             </svg>
           </div>
+          <DragOverlay dropAnimation={null}>
+            {draggedRow && (
+              <div className="inline-flex items-center gap-2 rounded-lg border border-emerald-500 bg-white px-3 py-1.5 text-sm shadow-lg">
+                <span className={KIND_ICON_COLOR[draggedRow.kind]}>{KIND_ICON[draggedRow.kind]}</span>
+                <span className={KIND_TEXT[draggedRow.kind]}>{draggedRow.name}</span>
+              </div>
+            )}
+          </DragOverlay>
+          </DndContext>
 
           {/* Today marker */}
           <div className="pointer-events-none absolute bottom-0 top-0 z-[15] w-0.5 bg-rose-500" style={{ left: NAME_W + todayX + dayW / 2 }}>
@@ -907,6 +970,48 @@ export function GanttView() {
           {notice.text}
         </div>
       )}
+    </div>
+  );
+}
+
+interface RowHandle {
+  listeners: DraggableSyntheticListeners;
+  attributes: DraggableAttributes;
+  setActivatorNodeRef: (el: HTMLElement | null) => void;
+}
+
+/** A Gantt row that can be dragged by its handle and dropped on (same rules as WBS). */
+function GanttDndRow({
+  node,
+  drop,
+  className,
+  style,
+  children,
+}: {
+  node: WbsNode;
+  drop: DropPos | null;
+  className?: string;
+  style?: CSSProperties;
+  children: (handle: RowHandle) => ReactNode;
+}) {
+  const drag = useDraggable({ id: ROW_PREFIX + node.id });
+  const target = useDroppable({ id: DROP_PREFIX + node.id });
+  return (
+    <div
+      ref={(el) => {
+        drag.setNodeRef(el);
+        target.setNodeRef(el);
+      }}
+      style={style}
+      className={cx(
+        className,
+        drag.isDragging && 'opacity-40',
+        drop === 'before' && '[&>div]:shadow-[inset_0_3px_0_0_#10b981]',
+        drop === 'after' && '[&>div]:shadow-[inset_0_-3px_0_0_#10b981]',
+        drop === 'inside' && '[&>div:first-child]:!bg-emerald-100 [&>div]:shadow-[inset_0_0_0_2px_#10b981]',
+      )}
+    >
+      {children({ listeners: drag.listeners, attributes: drag.attributes, setActivatorNodeRef: drag.setActivatorNodeRef })}
     </div>
   );
 }

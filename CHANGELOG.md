@@ -20,6 +20,7 @@ read about here but not checked out.
 - Gantt, Day view: clicking a day in a task's row sets that task's Plan (no plan yet = that day;
   before the start = new start; otherwise = new end). Clicking in Project / Group rows no longer creates tasks.
 - Gantt: "+ Task" next to "+ Group" on Project / Group names.
+- Gantt: drag rows by the ⠿ handle to reorder or move them into another Project / Group (same as WBS).
 - WBS header stays visible while scrolling, and the sideways scroll bar is always on screen (as in Gantt).
   Both tables fit the window even when a notice banner is shown.
 - WBS: columns such as Progress no longer show on top of the Name column when scrolling sideways.

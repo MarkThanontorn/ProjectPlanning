@@ -19,7 +19,7 @@ import {
 } from '@dnd-kit/core';
 import { horizontalListSortingStrategy, SortableContext, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { canPlace, childrenMap } from '../../domain/calc';
+import { childrenMap } from '../../domain/calc';
 import { scheduleConflicts } from '../../domain/deps';
 import { RANKS, STATUSES, type ColumnDef, type Computed, type NodeKind, type Rank, type Status, type WbsNode } from '../../domain/types';
 import { useComputed, useFitToViewport, useNow } from '../../hooks';
@@ -40,6 +40,7 @@ import { ColumnManager } from './ColumnManager';
 import { ResizeHandle } from '../../components/ResizeHandle';
 import { CompleteToggle, HideCompletedToggle } from '../../components/completion';
 import { completedIds } from '../../domain/completion';
+import { DROP_PREFIX, ROW_PREFIX, rowDropFor, type DropPos, type RowDrop } from '../../components/rowDnd';
 import { KIND_ACCENT, KIND_ICON, KIND_ICON_COLOR, KIND_ROW_BG, KIND_ROW_BORDER, KIND_TEXT } from '../../kindStyle';
 
 const KIND_STYLE = KIND_TEXT;
@@ -118,23 +119,12 @@ function SortableHeader({
   );
 }
 
-type DropPos = 'before' | 'after' | 'inside';
 /** Resolved drop: indicator on `targetId`, destination `parentId` + `index`. */
-interface RowDrop {
-  targetId: string;
-  pos: DropPos;
-  parentId: string | null;
-  index: number;
-}
-
 interface RowHandle {
   listeners: DraggableSyntheticListeners;
   attributes: DraggableAttributes;
   setActivatorNodeRef: (el: HTMLElement | null) => void;
 }
-
-const ROW_PREFIX = 'row:';
-const DROP_PREFIX = 'drop:';
 
 /** Table row that is both a drag source (via its handle) and a drop target. */
 function DndRow({
@@ -344,37 +334,7 @@ export function WbsView() {
     setFocusId(addNode(parentId, kind, name));
   };
 
-  /**
-   * Turns the pointer position over a row into a drop: top quarter = before,
-   * bottom quarter = after, middle of a project/group = inside (appended).
-   * Below an expanded parent means "first child". Invalid moves return null.
-   */
-  const resolveDrop = (activeId: string, targetId: string, rel: number): RowDrop | null => {
-    const target = nodes.find((n) => n.id === targetId);
-    if (!target || targetId === activeId) return null;
-    const children = (kids.get(target.id) ?? []).filter((n) => n.id !== activeId);
-    const container = target.kind !== 'task';
-    const openKids = container && !target.collapsed && children.length > 0;
-    const sibling = (after: boolean): RowDrop => {
-      const sibs = (kids.get(target.parentId) ?? []).filter((n) => n.id !== activeId);
-      return { targetId, pos: after ? 'after' : 'before', parentId: target.parentId, index: sibs.indexOf(target) + (after ? 1 : 0) };
-    };
-    let drop: RowDrop;
-    if (!container) drop = sibling(rel >= 0.5);
-    else if (rel < 0.25) drop = sibling(false);
-    else if (rel > 0.75) drop = openKids ? { targetId, pos: 'after', parentId: target.id, index: 0 } : sibling(true);
-    else drop = { targetId, pos: 'inside', parentId: target.id, index: children.length };
-    return canPlace(nodes, activeId, drop.parentId) ? drop : null;
-  };
-
-  /** Drop for the current pointer position, or null when not over a valid row. */
-  const dropFor = (e: DragMoveEvent | DragEndEvent): RowDrop | null => {
-    const overId = e.over ? String(e.over.id) : '';
-    const start = e.activatorEvent as PointerEvent;
-    if (!e.over || !overId.startsWith(DROP_PREFIX) || !('clientY' in start)) return null;
-    const rel = (start.clientY + e.delta.y - e.over.rect.top) / e.over.rect.height;
-    return resolveDrop(String(e.active.id).slice(ROW_PREFIX.length), overId.slice(DROP_PREFIX.length), rel);
-  };
+  const dropFor = (e: DragMoveEvent | DragEndEvent) => rowDropFor(e, nodes, kids);
 
   const onDragMove = (e: DragMoveEvent) => {
     if (!String(e.active.id).startsWith(ROW_PREFIX)) return;
