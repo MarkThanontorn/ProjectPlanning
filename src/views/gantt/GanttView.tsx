@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { KIND_ACCENT, KIND_ICON, KIND_ICON_COLOR, KIND_ROW_BG, KIND_TEXT } from '../../kindStyle';
+import { KIND_ACCENT, KIND_ICON, KIND_ICON_COLOR, KIND_ROW_BG, KIND_ROW_BORDER, KIND_TEXT } from '../../kindStyle';
 import { useTranslation } from 'react-i18next';
 import {
   addDays,
@@ -304,28 +304,36 @@ export function GanttView() {
   /** Stable callback for the memoized header: zoom into the middle of the clicked period. */
   const pickPeriod = useCallback((left: number, width: number) => zoomRef.current(dateAtRef.current(left + width / 2)), []);
 
-  /** Day mode: a click on an empty slot creates a task on that date (inside the row's project/group). */
-  const createTaskAt = (node: WbsNode, iso: string) => {
-    const parentId = node.kind === 'task' ? node.parentId : node.id;
-    if (!parentId) return;
-    const id = addNode(parentId, 'task', t('wbs.defaultTask'));
-    updateNode(id, { planStart: iso, planEnd: iso });
-    setEditingId(id);
-    setNotice({ text: t('gantt.created', { date: format(parseISO(iso), 'd MMM yyyy') }), tone: 'ok' });
+  /** A task row (not a project / group, not a task with sub-tasks) — its plan can be set by clicking days. */
+  const plannable = (node: WbsNode) => node.kind === 'task' && !!computed.get(node.id)?.isLeaf;
+
+  /**
+   * Day mode on a task row: a click sets that task's Plan.
+   * No plan yet → that single day; before the start → new start; otherwise → new end.
+   */
+  const setPlanAt = (node: WbsNode, iso: string) => {
+    const s = node.planStart;
+    const e = node.planEnd;
+    const next = !s || !e ? { planStart: iso, planEnd: iso } : iso < s ? { planStart: iso, planEnd: e } : { planStart: s, planEnd: iso };
+    updateNode(node.id, next);
+    setNotice({
+      text: t('gantt.planSet', { name: node.name, start: format(parseISO(next.planStart), 'd MMM'), end: format(parseISO(next.planEnd), 'd MMM yyyy') }),
+      tone: 'ok',
+    });
   };
 
-  /** Click on the empty part of a row: zoom in, or (day mode) create a task. */
+  /** Click on the empty part of a row: zoom in, or (day mode, task rows) set the plan. */
   const onTimelineClick = (e: React.MouseEvent<HTMLDivElement>, node: WbsNode) => {
     if ((e.target as Element).closest('[data-task-id], [data-gantt-control]')) return;
     const iso = dateAtX(e.clientX - e.currentTarget.getBoundingClientRect().left);
-    if (scale === 'day') createTaskAt(node, iso);
-    else zoomInAt(iso);
+    if (scale !== 'day') zoomInAt(iso);
+    else if (plannable(node)) setPlanAt(node, iso);
   };
 
   /** Day mode: ghost "+" cell under the pointer. */
   const [hoverCell, setHoverCell] = useState<{ id: string; idx: number } | null>(null);
   const onTimelineMove = (e: React.MouseEvent<HTMLDivElement>, node: WbsNode) => {
-    if (scale !== 'day') return;
+    if (scale !== 'day' || !plannable(node)) return;
     const overControl = (e.target as Element).closest('[data-task-id], [data-gantt-control]');
     const idx = Math.floor((e.clientX - e.currentTarget.getBoundingClientRect().left) / dayW);
     setHoverCell((h) => (overControl ? null : h?.id === node.id && h.idx === idx ? h : { id: node.id, idx }));
@@ -500,13 +508,13 @@ export function GanttView() {
       return (
         <div
           className={cx(
-            'absolute top-1/2 z-[6] h-3.5 -translate-y-1/2 overflow-hidden rounded-sm border',
-            node.kind === 'project' ? 'border-emerald-600 bg-emerald-200' : 'border-violet-500 bg-violet-200',
+            'absolute top-1/2 z-[6] -translate-y-1/2 overflow-hidden rounded-sm border',
+            node.kind === 'project' ? 'h-4 border-slate-600 bg-slate-300' : 'h-2.5 border-slate-500 bg-slate-200',
           )}
           style={{ left, width }}
           title={`${node.name}: ${text} · ${c.progress}%`}
         >
-          <div className={cx('h-full', node.kind === 'project' ? 'bg-emerald-600' : 'bg-violet-500')} style={{ width: `${c.progress}%` }} />
+          <div className={cx('h-full', node.kind === 'project' ? 'bg-slate-600' : 'bg-slate-500')} style={{ width: `${c.progress}%` }} />
         </div>
       );
 
@@ -664,7 +672,7 @@ export function GanttView() {
               return (
                 <div
                   key={node.id}
-                  className={cx('group/row flex border-b border-slate-200/70 hover:bg-amber-50/40', node.kind === 'project' ? 'bg-emerald-50/50' : node.kind === 'group' && 'bg-violet-50/40 dark:bg-slate-200/40')}
+                  className={cx('group/row flex border-b border-slate-200/70 hover:bg-slate-50/60', KIND_ROW_BORDER[node.kind])}
                   style={{ height: ROW_H }}
                 >
                   <div
@@ -721,44 +729,55 @@ export function GanttView() {
                           ✕
                         </button>
                         {node.kind !== 'task' && (
-                        <button
-                          className="rounded border border-sky-300 bg-sky-50 px-1.5 text-[11px] font-medium text-sky-700 hover:bg-sky-100"
-                          title={t('wbs.addGroupIn', { name: node.name })}
-                          onClick={() => add(node.id, 'group')}
-                        >
-                          + {t('kind.group')}
-                        </button>
+                          <>
+                            <button
+                              className="rounded border border-emerald-300 bg-emerald-50 px-1.5 text-[11px] font-medium text-emerald-700 hover:bg-emerald-100"
+                              title={t('wbs.addTaskIn', { name: node.name })}
+                              onClick={() => add(node.id, 'task')}
+                            >
+                              + {t('kind.task')}
+                            </button>
+                            <button
+                              className="rounded border border-sky-300 bg-sky-50 px-1.5 text-[11px] font-medium text-sky-700 hover:bg-sky-100"
+                              title={t('wbs.addGroupIn', { name: node.name })}
+                              onClick={() => add(node.id, 'group')}
+                            >
+                              + {t('kind.group')}
+                            </button>
+                          </>
                         )}
                       </div>
                     )}
                   </div>
                   <div
-                    className={cx('relative', scale === 'day' ? 'cursor-cell' : 'cursor-zoom-in')}
+                    className={cx('relative', scale !== 'day' ? 'cursor-zoom-in' : plannable(node) && 'cursor-cell')}
                     style={{ width: timelineW }}
-                    title={scale === 'day' ? t('gantt.createHint') : t('gantt.zoomHint')}
+                    title={scale !== 'day' ? t('gantt.zoomHint') : plannable(node) ? t('gantt.planHint') : undefined}
                     onClick={(e) => onTimelineClick(e, node)}
                     onMouseMove={(e) => onTimelineMove(e, node)}
                     onMouseLeave={() => setHoverCell(null)}
                   >
                     {scale === 'day' && hoverCell?.id === node.id && !drag && !link && (
                       <div
-                        className="pointer-events-none absolute inset-y-1 z-[5] grid place-items-center rounded border border-dashed border-emerald-500 bg-emerald-50 text-sm font-bold text-emerald-600"
+                        className="pointer-events-none absolute inset-y-1 z-[5] rounded border-2 border-dashed border-sky-500 bg-sky-100/60"
                         style={{ left: hoverCell.idx * dayW, width: dayW }}
-                      >
-                        +
-                      </div>
+                      />
                     )}
                     {renderBar(node, c, rowIdx)}
                     {node.dueDate && (
                       <div
+                        data-gantt-control
                         className={cx(
-                          'pointer-events-auto absolute top-0 z-[9] -translate-x-1/2 text-sm leading-none drop-shadow-sm',
-                          node.status === 'done' ? 'text-emerald-600' : node.dueDate < today ? 'text-rose-600' : 'text-amber-500',
+                          'absolute top-1/2 z-[9] -translate-x-1/2 -translate-y-1/2 drop-shadow',
+                          node.status === 'done' ? 'text-emerald-500' : node.dueDate < today ? 'text-rose-500' : 'text-amber-400',
                         )}
-                        style={{ left: x(node.dueDate) + dayW / 2, top: 1 }}
+                        style={{ left: x(node.dueDate) + dayW / 2 }}
                         title={t('gantt.dueHint', { date: format(parseISO(node.dueDate), 'd MMM yyyy') })}
                       >
-                        ⚑
+                        <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden>
+                          <path d="M4.5 2.5v15" stroke="rgb(var(--c-slate-800))" strokeWidth="2" strokeLinecap="round" />
+                          <path d="M5.5 3h10l-2.5 3.5L15.5 10h-10z" fill="currentColor" stroke="rgb(var(--c-slate-800))" strokeWidth="1.2" strokeLinejoin="round" />
+                        </svg>
                       </div>
                     )}
                     {node.parentId === null &&

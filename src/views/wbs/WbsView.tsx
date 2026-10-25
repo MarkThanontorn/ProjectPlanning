@@ -40,12 +40,12 @@ import { ColumnManager } from './ColumnManager';
 import { ResizeHandle } from '../../components/ResizeHandle';
 import { CompleteToggle, HideCompletedToggle } from '../../components/completion';
 import { completedIds } from '../../domain/completion';
-import { KIND_ACCENT, KIND_ICON, KIND_ICON_COLOR, KIND_ROW_BG, KIND_TEXT } from '../../kindStyle';
+import { KIND_ACCENT, KIND_ICON, KIND_ICON_COLOR, KIND_ROW_BG, KIND_ROW_BORDER, KIND_TEXT } from '../../kindStyle';
 
 const KIND_STYLE = KIND_TEXT;
 const KIND_HOVER: Record<NodeKind, string> = {
-  project: 'group-hover:bg-emerald-100',
-  group: 'group-hover:bg-violet-100 dark:group-hover:bg-slate-300',
+  project: 'group-hover:bg-slate-50',
+  group: 'group-hover:bg-slate-50',
   task: 'group-hover:bg-slate-50',
 };
 
@@ -417,12 +417,12 @@ export function WbsView() {
         <DndRow
           node={node}
           drop={rowDrop?.targetId === node.id ? rowDrop.pos : null}
-          className={cx('group border-b border-slate-200/70', KIND_ROW_BG[node.kind], KIND_HOVER[node.kind])}
+          className={cx('group border-b border-slate-200/70', KIND_ROW_BG[node.kind], KIND_HOVER[node.kind], KIND_ROW_BORDER[node.kind])}
         >
           {(handle) => (
           <>
           <td
-            className={cx('sticky left-0 z-[1] border-r border-slate-200 py-1 pr-1', KIND_ROW_BG[node.kind], KIND_HOVER[node.kind], KIND_ACCENT[node.kind])}
+            className={cx('sticky left-0 z-[3] border-r border-slate-200 py-1 pr-1', KIND_ROW_BG[node.kind], KIND_HOVER[node.kind], KIND_ACCENT[node.kind])}
             style={{ ...indent(c.depth), ...widthStyle(nameWidth) }}
           >
             <div className="relative flex items-center gap-1">
@@ -477,7 +477,7 @@ export function WbsView() {
               key={col.id}
               className={cx(
                 'overflow-hidden whitespace-nowrap px-2 py-1 align-middle text-sm',
-                col.pinned && cx('sticky z-[1]', KIND_ROW_BG[node.kind], KIND_HOVER[node.kind]),
+                col.pinned && cx('sticky z-[3]', KIND_ROW_BG[node.kind], KIND_HOVER[node.kind]),
                 col.id === lastPinnedId && 'border-r-2 border-r-sky-200',
               )}
               style={{ ...(col.pinned ? { left: pinLeft[col.id] ?? 0 } : {}), ...widthStyle(colWidth(col)) }}
@@ -491,7 +491,7 @@ export function WbsView() {
         {!node.collapsed && children.filter((ch) => !hidden.has(ch.id)).map(renderNode)}
         {canHaveChildren && children.length === 0 && (
           <tr className="border-b border-slate-100">
-            <td className="sticky left-0 bg-white py-1.5" style={{ ...indent(c.depth + 1), ...widthStyle(nameWidth) }}>
+            <td className="sticky left-0 z-[3] bg-white py-1.5" style={{ ...indent(c.depth + 1), ...widthStyle(nameWidth) }}>
               <div className="flex items-center gap-2 pl-5">
                 <span className="text-xs italic text-slate-400">{t('wbs.empty')}</span>
                 <AddChip kind="task" onClick={() => add(node.id, 'task')} title={t('wbs.addTaskIn', { name: node.name })} />

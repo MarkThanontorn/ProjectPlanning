@@ -159,7 +159,9 @@
     "zoomHint": "Click an empty slot or a header cell to zoom in (Year → Quarter → Week → Day)",
     "createHint": "Day view: click an empty slot in a row to create a task on that day",
     "created": "Task created for {{date}} — type its name",
-    "dueHint": "Due date: {{date}}"
+    "dueHint": "Due date: {{date}}",
+    "planSet": "Plan of \"{{name}}\": {{start}} – {{end}}",
+    "planHint": "Click a day to set this task's plan (no plan yet = that day; before the start = new start; otherwise = new end)"
   },
   "list": {
     "search": "Search…",

@@ -11,13 +11,18 @@ Versions before 1.0.0 were reconstructed after the fact from the development his
 read about here but not checked out.
 
 ## [2.2.0] — 2026-10-25
-- Project / Group / Task are easy to tell apart in WBS and Gantt, in light and dark mode:
-  Project = green, Group = purple (grey row in dark mode), each with a coloured bar and icon.
+- Project / Group / Task are told apart by typography, not colour, in WBS and Gantt:
+  Project = bold, larger and underlined with a heavier line above; Group = semibold; Task = regular.
+  Colour is kept for status and progress.
 - Gantt bars are clearer: tasks not started yet are solid blue, overdue tasks red, finished tasks green;
-  Project and Group summary bars in their own colours.
-- Gantt shows a ⚑ flag on each Due Date (amber = upcoming, red = overdue, green = done).
+  Project / Group summary bars in grey (project thicker).
+- Gantt shows a ⚑ flag centred on each Due Date (amber = upcoming, red = overdue, green = done).
+- Gantt, Day view: clicking a day in a task's row sets that task's Plan (no plan yet = that day;
+  before the start = new start; otherwise = new end). Clicking in Project / Group rows no longer creates tasks.
+- Gantt: "+ Task" next to "+ Group" on Project / Group names.
 - WBS header stays visible while scrolling, and the sideways scroll bar is always on screen (as in Gantt).
-  Both tables now fit the window even when a notice banner is shown.
+  Both tables fit the window even when a notice banner is shown.
+- WBS: columns such as Progress no longer show on top of the Name column when scrolling sideways.
 - Drop-down lists, date pickers and scroll bars follow dark mode.
 - Language buttons read TH / EN.
 
