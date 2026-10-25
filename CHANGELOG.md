@@ -16,7 +16,8 @@ read about here but not checked out.
   Colour is kept for status and progress.
 - Gantt bars are clearer: tasks not started yet are solid blue, overdue tasks red, finished tasks green;
   Project / Group summary bars in grey, the same size.
-- Gantt shows a ⚑ flag centred on each Due Date (amber = upcoming, red = overdue, green = done).
+- Gantt shows a ⚑ flag centred on each Due Date (amber = upcoming, red = overdue, green = done);
+  drag the flag left / right to move the due date, click it to open the task.
 - Gantt, Day view: clicking a day in a task's row sets that task's Plan (no plan yet = that day;
   before the start = new start; otherwise = new end). Clicking in Project / Group rows no longer creates tasks.
 - Gantt: "+ Task" next to "+ Group" on Project / Group names.

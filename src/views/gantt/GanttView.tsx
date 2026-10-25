@@ -224,6 +224,26 @@ export function GanttView() {
     setMsDrag(null);
   };
 
+  /** Dragging a Due Date flag sideways moves the due date (day by day); a plain click opens the task. */
+  const [dueDrag, setDueDrag] = useState<{ id: string; originX: number; date: string; delta: number } | null>(null);
+  const beginDueDrag = (e: React.PointerEvent, id: string, date: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    capture(e);
+    setDueDrag({ id, originX: e.clientX, date, delta: 0 });
+  };
+  const moveDueDrag = (e: React.PointerEvent) => {
+    if (!dueDrag) return;
+    const delta = Math.round((e.clientX - dueDrag.originX) / SCALES[scale].dayW);
+    if (delta !== dueDrag.delta) setDueDrag({ ...dueDrag, delta });
+  };
+  const endDueDrag = () => {
+    if (!dueDrag) return;
+    if (dueDrag.delta !== 0) updateNode(dueDrag.id, { dueDate: shiftIsoDate(dueDrag.date, dueDrag.delta) });
+    else openTask(dueDrag.id);
+    setDueDrag(null);
+  };
+
   const add = (parentId: string | null, kind: 'project' | 'group' | 'task') => {
     const name = kind === 'project' ? t('wbs.defaultProject') : kind === 'group' ? t('wbs.defaultGroup') : t('wbs.defaultTask');
     setEditingId(addNode(parentId, kind, name));
@@ -816,22 +836,37 @@ export function GanttView() {
                       />
                     )}
                     {renderBar(node, c, rowIdx)}
-                    {node.dueDate && (
-                      <div
-                        data-gantt-control
-                        className={cx(
-                          'absolute top-1/2 z-[9] -translate-x-1/2 -translate-y-1/2 drop-shadow',
-                          node.status === 'done' ? 'text-emerald-500' : node.dueDate < today ? 'text-rose-500' : 'text-amber-400',
-                        )}
-                        style={{ left: x(node.dueDate) + dayW / 2 }}
-                        title={t('gantt.dueHint', { date: format(parseISO(node.dueDate), 'd MMM yyyy') })}
-                      >
-                        <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden>
-                          <path d="M4.5 2.5v15" stroke="rgb(var(--c-slate-800))" strokeWidth="2" strokeLinecap="round" />
-                          <path d="M5.5 3h10l-2.5 3.5L15.5 10h-10z" fill="currentColor" stroke="rgb(var(--c-slate-800))" strokeWidth="1.2" strokeLinejoin="round" />
-                        </svg>
-                      </div>
-                    )}
+                    {node.dueDate &&
+                      (() => {
+                        const dragging = dueDrag?.id === node.id;
+                        const due = dragging ? shiftIsoDate(dueDrag.date, dueDrag.delta) : node.dueDate;
+                        return (
+                          <div
+                            data-gantt-control
+                            className={cx(
+                              'absolute top-1/2 z-[9] -translate-x-1/2 -translate-y-1/2 cursor-ew-resize touch-none drop-shadow',
+                              dragging && 'z-[12] scale-125',
+                              node.status === 'done' ? 'text-emerald-500' : due < today ? 'text-rose-500' : 'text-amber-400',
+                            )}
+                            style={{ left: x(due) + dayW / 2 }}
+                            title={t('gantt.dueDragHint', { date: format(parseISO(due), 'd MMM yyyy') })}
+                            onPointerDown={(e) => beginDueDrag(e, node.id, node.dueDate!)}
+                            onPointerMove={moveDueDrag}
+                            onPointerUp={endDueDrag}
+                            onPointerCancel={() => setDueDrag(null)}
+                          >
+                            <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden>
+                              <path d="M4.5 2.5v15" stroke="rgb(var(--c-slate-800))" strokeWidth="2" strokeLinecap="round" />
+                              <path d="M5.5 3h10l-2.5 3.5L15.5 10h-10z" fill="currentColor" stroke="rgb(var(--c-slate-800))" strokeWidth="1.2" strokeLinejoin="round" />
+                            </svg>
+                            {dragging && (
+                              <span className="pointer-events-none absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                                {t('col.dueDate')} · {format(parseISO(due), 'd MMM')}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
                     {node.parentId === null &&
                       milestones
                         .filter((m) => m.projectId === node.id)

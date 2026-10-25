@@ -161,7 +161,8 @@
     "created": "Task created for {{date}} — type its name",
     "dueHint": "Due date: {{date}}",
     "planSet": "Plan of \"{{name}}\": {{start}} – {{end}}",
-    "planHint": "Click a day to set this task's plan (no plan yet = that day; before the start = new start; otherwise = new end)"
+    "planHint": "Click a day to set this task's plan (no plan yet = that day; before the start = new start; otherwise = new end)",
+    "dueDragHint": "Due date: {{date}} — drag left/right to move it, click to open the task"
   },
   "list": {
     "search": "Search…",
