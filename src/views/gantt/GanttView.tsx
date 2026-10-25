@@ -509,12 +509,12 @@ export function GanttView() {
         <div
           className={cx(
             'absolute top-1/2 z-[6] -translate-y-1/2 overflow-hidden rounded-sm border',
-            node.kind === 'project' ? 'h-4 border-slate-600 bg-slate-300' : 'h-2.5 border-slate-500 bg-slate-200',
+            'h-4 border-slate-500 bg-slate-300',
           )}
           style={{ left, width }}
           title={`${node.name}: ${text} · ${c.progress}%`}
         >
-          <div className={cx('h-full', node.kind === 'project' ? 'bg-slate-600' : 'bg-slate-500')} style={{ width: `${c.progress}%` }} />
+          <div className="h-full bg-slate-600" style={{ width: `${c.progress}%` }} />
         </div>
       );
 

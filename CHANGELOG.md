@@ -12,10 +12,10 @@ read about here but not checked out.
 
 ## [2.2.0] — 2026-10-25
 - Project / Group / Task are told apart by typography, not colour, in WBS and Gantt:
-  Project = bold, larger and underlined with a heavier line above; Group = semibold; Task = regular.
+  Project = bold italic and underlined with a heavier line above; Group = semibold italic; Task = regular (all the same size).
   Colour is kept for status and progress.
 - Gantt bars are clearer: tasks not started yet are solid blue, overdue tasks red, finished tasks green;
-  Project / Group summary bars in grey (project thicker).
+  Project / Group summary bars in grey, the same size.
 - Gantt shows a ⚑ flag centred on each Due Date (amber = upcoming, red = overdue, green = done).
 - Gantt, Day view: clicking a day in a task's row sets that task's Plan (no plan yet = that day;
   before the start = new start; otherwise = new end). Clicking in Project / Group rows no longer creates tasks.

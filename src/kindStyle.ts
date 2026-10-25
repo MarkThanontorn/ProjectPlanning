@@ -3,7 +3,7 @@ import type { NodeKind } from './domain/types';
 /**
  * How Project / Group / Task are told apart in WBS and Gantt — by typography and icon,
  * not colour (colour is kept for status and progress):
- * Project = bold, slightly larger, underlined · Group = semibold · Task = regular.
+ * Project = bold italic, underlined · Group = semibold italic · Task = regular — all the same size.
  */
 export const KIND_ICON: Record<NodeKind, string> = { project: '◆', group: '▸', task: '•' };
 
@@ -14,8 +14,8 @@ export const KIND_ICON_COLOR: Record<NodeKind, string> = {
 };
 
 export const KIND_TEXT: Record<NodeKind, string> = {
-  project: 'text-[15px] font-bold text-slate-900 underline decoration-slate-400 decoration-2 underline-offset-4',
-  group: 'font-semibold text-slate-800',
+  project: 'font-bold italic text-slate-900 underline decoration-slate-400 decoration-2 underline-offset-4',
+  group: 'font-semibold italic text-slate-800',
   task: 'text-slate-700',
 };
 
