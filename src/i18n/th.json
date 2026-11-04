@@ -103,7 +103,8 @@
     "collapseAll": "ย่อทั้งหมด",
     "expandAll": "ขยายทั้งหมด",
     "collapseAllHint": "ย่อทุกโปรเจกต์และกลุ่ม",
-    "expandAllHint": "ขยายทุกโปรเจกต์และกลุ่ม"
+    "expandAllHint": "ขยายทุกโปรเจกต์และกลุ่ม",
+    "rename": "แก้ไขชื่อ"
   },
   "lt": {
     "days": "{{n}} วัน",

@@ -1,11 +1,18 @@
 /**
  * Shared rules for dragging Project / Group / Task rows to a new place (WBS and Gantt).
  */
-import type { DragEndEvent, DragMoveEvent } from '@dnd-kit/core';
+import type { DragEndEvent, DragMoveEvent, DraggableAttributes, DraggableSyntheticListeners } from '@dnd-kit/core';
 import { canPlace } from '../domain/calc';
 import type { WbsNode } from '../domain/types';
 
 export type DropPos = 'before' | 'after' | 'inside';
+
+/** What a row gives its drag handle. */
+export interface RowHandle {
+  listeners: DraggableSyntheticListeners;
+  attributes: DraggableAttributes;
+  setActivatorNodeRef: (el: HTMLElement | null) => void;
+}
 
 export interface RowDrop {
   targetId: string;

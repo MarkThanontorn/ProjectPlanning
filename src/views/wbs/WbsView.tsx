@@ -1,5 +1,5 @@
-import { Fragment, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { NodeTeamBadge } from '../../components/team/TaskTeam';
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { RowName } from '../../components/RowName';
 import { useTranslation } from 'react-i18next';
 import {
   closestCenter,
@@ -14,8 +14,6 @@ import {
   type CollisionDetection,
   type DragEndEvent,
   type DragMoveEvent,
-  type DraggableAttributes,
-  type DraggableSyntheticListeners,
 } from '@dnd-kit/core';
 import { horizontalListSortingStrategy, SortableContext, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -30,21 +28,19 @@ import {
   ProgressSlider,
   cx,
   DateInput,
-  IconButton,
   InlineText,
   LongTextCell,
-  NotRelevantBadge,
   LeadtimeText,
   ProgressBar,
   ViewTitle,
 } from '../../components/ui';
 import { ColumnManager } from './ColumnManager';
 import { ResizeHandle } from '../../components/ResizeHandle';
-import { CollapseAllButtons, CompleteToggle, HideCompletedToggle, InChargeFilter, NotRelevantToggle } from '../../components/completion';
+import { CollapseAllButtons, HideCompletedToggle, InChargeFilter } from '../../components/completion';
 import { inChargeRowIds } from '../../domain/taskState';
 import { completedIds } from '../../domain/completion';
-import { DROP_PREFIX, ROW_PREFIX, rowDropFor, type DropPos, type RowDrop } from '../../components/rowDnd';
-import { KIND_ACCENT, KIND_ICON, KIND_ICON_COLOR, KIND_ROW_BG, KIND_ROW_BORDER, KIND_TEXT } from '../../kindStyle';
+import { DROP_PREFIX, ROW_PREFIX, rowDropFor, type DropPos, type RowDrop, type RowHandle } from '../../components/rowDnd';
+import { KIND_ACCENT, KIND_ICON, KIND_ROW_BG, KIND_ROW_BORDER, KIND_TEXT } from '../../kindStyle';
 
 const KIND_STYLE = KIND_TEXT;
 const KIND_HOVER: Record<NodeKind, string> = {
@@ -123,12 +119,6 @@ function SortableHeader({
 }
 
 /** Resolved drop: indicator on `targetId`, destination `parentId` + `index`. */
-interface RowHandle {
-  listeners: DraggableSyntheticListeners;
-  attributes: DraggableAttributes;
-  setActivatorNodeRef: (el: HTMLElement | null) => void;
-}
-
 /** Table row that is both a drag source (via its handle) and a drop target. */
 function DndRow({
   node,
@@ -281,11 +271,13 @@ export function WbsView() {
   const { t } = useTranslation();
   const nodes = useAppStore((s) => s.nodes);
   const columns = useAppStore((s) => s.columns);
-  const { addNode, updateNode, deleteNode, moveNodeTo, toggleCollapsed, reorderColumns, openTask, updateColumn } = useAppStore();
+  const { addNode, moveNodeTo, reorderColumns, updateColumn } = useAppStore();
   const now = useNow(30_000);
   const computed = useComputed(now);
   const [showColumns, setShowColumns] = useState(false);
   const [focusId, setFocusId] = useState<string | null>(null);
+  /** Added since the filter last changed: stay visible even if the filter wouldn't show them yet. */
+  const [newIds, setNewIds] = useState<Set<string>>(() => new Set());
   const [dragId, setDragId] = useState<string | null>(null);
   const [rowDrop, setRowDrop] = useState<RowDrop | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -334,7 +326,9 @@ export function WbsView() {
 
   const add = (parentId: string | null, kind: NodeKind) => {
     const name = kind === 'project' ? t('wbs.defaultProject') : kind === 'group' ? t('wbs.defaultGroup') : t('wbs.defaultTask');
-    setFocusId(addNode(parentId, kind, name));
+    const id = addNode(parentId, kind, name);
+    setFocusId(id);
+    setNewIds((ids) => new Set(ids).add(id));
   };
 
   const dropFor = (e: DragMoveEvent | DragEndEvent) => rowDropFor(e, nodes, kids);
@@ -371,7 +365,8 @@ export function WbsView() {
   const completed = useMemo(() => completedIds(nodes), [nodes]);
   const inCharge = useAppStore((s) => s.settings.inChargeFilter);
   const chargeIds = useMemo(() => inChargeRowIds(nodes, inCharge), [nodes, inCharge]);
-  const shown = (n: WbsNode) => !(hideCompleted && completed.has(n.id)) && (!chargeIds || chargeIds.has(n.id));
+  useEffect(() => setNewIds(new Set()), [inCharge]);
+  const shown = (n: WbsNode) => !(hideCompleted && completed.has(n.id)) && (!chargeIds || chargeIds.has(n.id) || newIds.has(n.id));
 
   const renderNode = (node: WbsNode): ReactNode => {
     const c = computed.get(node.id);
@@ -384,7 +379,7 @@ export function WbsView() {
           node={node}
           drop={rowDrop?.targetId === node.id ? rowDrop.pos : null}
           className={cx(
-            'group border-b border-slate-200/70',
+            'group group/row border-b border-slate-200/70',
             KIND_ROW_BG[node.kind],
             KIND_HOVER[node.kind],
             KIND_ROW_BORDER[node.kind],
@@ -394,55 +389,18 @@ export function WbsView() {
           {(handle) => (
           <>
           <td
-            className={cx('sticky left-0 z-[3] border-r border-slate-200 py-1 pr-1', KIND_ROW_BG[node.kind], KIND_HOVER[node.kind], KIND_ACCENT[node.kind])}
+            className={cx('sticky left-0 z-[3] border-r border-slate-200 py-1 pr-1 group-hover:z-[4]', KIND_ROW_BG[node.kind], KIND_HOVER[node.kind], KIND_ACCENT[node.kind])}
             style={{ ...indent(c.depth), ...widthStyle(nameWidth) }}
           >
-            <div className="relative flex items-center gap-1">
-              <button
-                ref={handle.setActivatorNodeRef}
-                {...handle.listeners}
-                {...handle.attributes}
-                title={t('wbs.dragRow')}
-                aria-label={t('wbs.dragRow')}
-                className="-ml-1 w-4 shrink-0 cursor-grab touch-none text-slate-300 hover:text-slate-600 active:cursor-grabbing group-hover:text-slate-400"
-              >
-                ⠿
-              </button>
-              {children.length > 0 ? (
-                <button className="w-5 shrink-0 text-slate-500 hover:text-slate-900" onClick={() => toggleCollapsed(node.id)} aria-label="toggle">
-                  {node.collapsed ? '▶' : '▼'}
-                </button>
-              ) : (
-                <span className={cx('w-5 shrink-0 text-center', KIND_ICON_COLOR[node.kind])}>{KIND_ICON[node.kind]}</span>
-              )}
-              <InlineText
-                value={node.name}
-                autoFocus={focusId === node.id}
-                onCommit={(v) => v.trim() && updateNode(node.id, { name: v.trim() })}
-                className={cx('cursor-pencil', KIND_STYLE[node.kind], node.status === 'done' && '!text-slate-400 line-through')}
-              />
-              {node.notRelevant && <NotRelevantBadge />}
-              <NodeTeamBadge nodeId={node.id} />
-              {/* Row actions float over the end of the name on hover, so names use the full width otherwise. */}
-              <div className="absolute right-0 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded-lg bg-emerald-50/95 py-0.5 pl-3 shadow-[-12px_0_12px_-4px_rgb(var(--c-emerald-50)/0.95)] group-focus-within:flex group-hover:flex">
-                {canHaveChildren && (
-                  <>
-                    <AddChip kind="task" onClick={() => add(node.id, 'task')} title={t('wbs.addTaskIn', { name: node.name })} />
-                    <AddChip kind="group" onClick={() => add(node.id, 'group')} title={t('wbs.addGroupIn', { name: node.name })} />
-                  </>
-                )}
-                <CompleteToggle node={node} />
-                {node.kind === 'task' && c.isLeaf && <NotRelevantToggle node={node} />}
-                <IconButton title={t('wbs.open')} onClick={() => openTask(node.id)}>⤢</IconButton>
-                <IconButton
-                  title={t('wbs.delete')}
-                  className="hover:bg-rose-100 hover:text-rose-700"
-                  onClick={() => confirm(t('wbs.deleteConfirm', { name: node.name })) && deleteNode(node.id)}
-                >
-                  ✕
-                </IconButton>
-              </div>
-            </div>
+            <RowName
+              node={node}
+              isLeaf={c.isLeaf}
+              hasKids={children.length > 0}
+              handle={handle}
+              editing={focusId === node.id}
+              onEditing={(on) => setFocusId(on ? node.id : null)}
+              onAdd={(kind) => add(node.id, kind)}
+            />
           </td>
           {visibleCols.map((col) => (
             <td

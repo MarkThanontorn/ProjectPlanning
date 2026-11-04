@@ -103,7 +103,8 @@
     "collapseAll": "Collapse all",
     "expandAll": "Expand all",
     "collapseAllHint": "Collapse every project and group",
-    "expandAllHint": "Expand every project and group"
+    "expandAllHint": "Expand every project and group",
+    "rename": "Rename"
   },
   "lt": {
     "days": "{{n}} days",

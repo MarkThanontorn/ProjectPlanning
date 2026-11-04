@@ -4,8 +4,8 @@ import { newId } from '../domain/factory';
 import { RANKS, STATUSES, type Rank, type Status } from '../domain/types';
 import { useComputed, useNow } from '../hooks';
 import { useAppStore } from '../store/useAppStore';
-import { TimerButtons, TimeUsing } from './TaskCard';
-import { ActualLeadtimeCell, DateInput, InlineText, LeadtimeText, PlanLeadtimeCell, ProgressBar, ProgressSlider } from './ui';
+import { DayButtons, TimerButtons, TimeUsing } from './TaskCard';
+import { ActualLeadtimeCell, cx, DateInput, InlineText, LeadtimeText, PlanLeadtimeCell, ProgressBar, ProgressSlider } from './ui';
 import { CompleteToggle, NotRelevantToggle } from './completion';
 import { MilestoneEditor } from './MilestoneEditor';
 import { EisenhowerControls } from './EisenhowerControls';
@@ -43,6 +43,12 @@ export function TaskDetailModal() {
   };
 
   const field = 'grid grid-cols-[8.5rem_1fr] items-center gap-2 text-sm';
+  const remarkBox = (
+    <div className={cx(field, 'mt-5 !items-start')}>
+      <span className="pt-1 text-slate-500">{t('col.remark')}</span>
+      <InlineText multiline value={node.remark} className="!min-h-[6rem]" onCommit={(v) => updateNode(node.id, { remark: v })} />
+    </div>
+  );
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4" onMouseDown={() => openTask(null)}>
@@ -70,14 +76,11 @@ export function TaskDetailModal() {
         </div>
 
         <TaskTeamBar nodeId={node.id} />
+        {isTask && <DayButtons node={node} wide />}
         <div className="space-y-2">
-          <div className={field}>
-            <span className="text-slate-500">{t('col.detail')}</span>
+          <div className={cx(field, '!items-start')}>
+            <span className="pt-1 text-slate-500">{t('col.detail')}</span>
             <InlineText multiline value={node.detail} className="!min-h-[8rem]" onCommit={(v) => updateNode(node.id, { detail: v })} />
-          </div>
-          <div className={field}>
-            <span className="text-slate-500">{t('col.remark')}</span>
-            <InlineText multiline value={node.remark} className="!min-h-[5rem]" onCommit={(v) => updateNode(node.id, { remark: v })} />
           </div>
           <div className={field}>
             <span className="text-slate-500">{t('col.rank')}</span>
@@ -219,6 +222,8 @@ export function TaskDetailModal() {
           />
         </div>
 
+        {remarkBox}
+
         <div className="mt-5 flex flex-col gap-3">
           <div className="flex justify-end">
             <TimeUsing node={node} className="text-sm" />
@@ -227,6 +232,7 @@ export function TaskDetailModal() {
         </div>
         </>
         )}
+        {!isTask && remarkBox}
         <TaskHistory nodeId={node.id} />
       </div>
     </div>

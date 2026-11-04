@@ -21,8 +21,11 @@ read about here but not checked out.
 - Cards: the task name is the title, with its project / group in small grey text below.
 - Cards: ☀ puts a task on the board's day, ☆ makes it a highlight.
 - Cards taken off the board keep their status and progress, and return in the week of their plan or due date.
-- Gantt: click any name to open its details; projects and groups now have a details popup,
-  and tasks have a Remark box.
+- WBS and Gantt: the Name column now works the same in both. Click a name for its details, ✎ to rename,
+  + to add inside; the other actions appear beside the column on hover, so they never cover the name.
+- Projects and groups have a details popup; tasks get a Remark box at the bottom of theirs.
+- Task popup: ☀ and ☆ buttons to put the task on the day or make it a highlight.
+- Newly added items stay visible while Gantt Focus or the In-charge filter is on (they used to vanish at once).
 - Gantt: click a Project / Group row to add a milestone on that date (group rows add to their project).
 - Gantt: right-click a row to set, move or clear the Due Date.
 - Export and backup file names include the time to the minute.

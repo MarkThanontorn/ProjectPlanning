@@ -31,7 +31,7 @@ function CardTitle({ node, computed, className }: { node: WbsNode; computed: Com
 }
 
 /** ☀ / ★ on a card: put the task on the board's day, or make it a highlight of that day. */
-function DayButtons({ node }: { node: WbsNode }) {
+export function DayButtons({ node, wide }: { node: WbsNode; wide?: boolean }) {
   const { t } = useTranslation();
   const day = useAppStore((s) => s.boardDay) ?? todayIso();
   const highlights = useAppStore((s) => s.today.highlights[day]) ?? [];
@@ -41,31 +41,35 @@ function DayButtons({ node }: { node: WbsNode }) {
   const onDay = node.todayDate === day;
   const starred = highlights.includes(node.id);
   const full = !starred && highlights.length >= MAX_HIGHLIGHTS;
-  const cls = 'grid h-5 w-5 place-items-center rounded text-sm leading-none hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40';
+  const cls = cx(
+    'rounded text-sm leading-none hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40',
+    wide ? 'border border-slate-300 px-2.5 py-1.5' : 'grid h-5 w-5 place-items-center',
+  );
   const stop = (fn: () => void) => (e: React.MouseEvent) => {
     e.stopPropagation();
     fn();
   };
   return (
-    <span className="ml-auto flex shrink-0 gap-0.5" onPointerDown={(e) => e.stopPropagation()}>
+    <span className={cx('flex shrink-0', wide ? 'mb-3 gap-2' : 'ml-auto gap-0.5')} onPointerDown={(e) => e.stopPropagation()}>
       <button
         type="button"
-        className={cx(cls, onDay ? 'text-emerald-600' : 'text-slate-300 hover:text-emerald-600')}
+        className={cx(cls, onDay ? 'text-emerald-600' : wide ? 'text-slate-600 hover:text-emerald-600' : 'text-slate-300 hover:text-emerald-600')}
         title={t(onDay ? 'board.offDay' : 'board.onDay')}
         aria-label={t(onDay ? 'board.offDay' : 'board.onDay')}
         onClick={stop(() => setTaskDay(node.id, onDay ? null : day))}
       >
-        ☀
+        ☀{wide && ` ${t(onDay ? 'board.offDay' : 'board.onDay')}`}
       </button>
       <button
         type="button"
-        className={cx(cls, starred ? 'text-amber-500' : 'text-slate-300 hover:text-amber-500')}
+        className={cx(cls, starred ? 'text-amber-500' : wide ? 'text-slate-600 hover:text-amber-500' : 'text-slate-300 hover:text-amber-500')}
         title={t(starred ? 'today.unstar' : 'today.star')}
         aria-label={t(starred ? 'today.unstar' : 'today.star')}
         disabled={full}
         onClick={stop(() => toggleHighlight(node.id, day))}
       >
         {starred ? '★' : '☆'}
+        {wide && ` ${t(starred ? 'today.unstar' : 'today.star')}`}
       </button>
     </span>
   );

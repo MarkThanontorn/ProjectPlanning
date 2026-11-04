@@ -8,10 +8,9 @@ import {
   useDroppable,
   useSensor,
   useSensors,
-  type DraggableAttributes,
-  type DraggableSyntheticListeners,
 } from '@dnd-kit/core';
-import { DROP_PREFIX, ROW_PREFIX, rowDropFor, sameDrop, type DropPos, type RowDrop } from '../../components/rowDnd';
+import { DROP_PREFIX, ROW_PREFIX, rowDropFor, sameDrop, type DropPos, type RowDrop, type RowHandle } from '../../components/rowDnd';
+import { RowName } from '../../components/RowName';
 import { KIND_ACCENT, KIND_ICON, KIND_ICON_COLOR, KIND_ROW_BG, KIND_ROW_BORDER, KIND_TEXT } from '../../kindStyle';
 import { useTranslation } from 'react-i18next';
 import {
@@ -36,13 +35,13 @@ import {
   startOfYear,
 } from 'date-fns';
 import { childrenMap, flattenTree, shiftIsoDate, todayIso, toIsoDate } from '../../domain/calc';
-import { blockers, depsOf, wouldCycle } from '../../domain/deps';
+import { depsOf, wouldCycle } from '../../domain/deps';
 import type { Computed, GanttScale, WbsNode } from '../../domain/types';
 import { useComputed, useFitToViewport, useNow } from '../../hooks';
 import { useAppStore } from '../../store/useAppStore';
-import { cx, InlineText, NotRelevantBadge, ViewTitle } from '../../components/ui';
+import { cx, ViewTitle } from '../../components/ui';
 import { ProjectMilestoneModal } from '../../components/MilestoneEditor';
-import { CollapseAllButtons, CompleteToggle, HideCompletedToggle, InChargeFilter, NotRelevantToggle } from '../../components/completion';
+import { CollapseAllButtons, HideCompletedToggle, InChargeFilter } from '../../components/completion';
 import { inChargeRowIds } from '../../domain/taskState';
 import { ResizeHandle } from '../../components/ResizeHandle';
 import { fmtYmd } from '../../domain/dates';
@@ -207,7 +206,7 @@ export function GanttView() {
   const storedNameW = useAppStore((s) => s.settings.ganttNameWidth);
   const [liveNameW, setLiveNameW] = useState<number | null>(null);
   const NAME_W = liveNameW ?? storedNameW;
-  const { updateNode, toggleCollapsed, openTask, updateSettings, addDependency, removeDependency, addNode, deleteNode, moveNodeTo } = useAppStore();
+  const { updateNode, openTask, updateSettings, addDependency, removeDependency, addNode, moveNodeTo } = useAppStore();
   const milestones = useAppStore((s) => s.milestones);
   const updateMilestone = useAppStore((s) => s.updateMilestone);
   const addMilestone = useAppStore((s) => s.addMilestone);
@@ -215,6 +214,8 @@ export function GanttView() {
   const [cellMenu, setCellMenu] = useState<{ x: number; y: number; node: WbsNode; iso: string } | null>(null);
   const [msDraft, setMsDraft] = useState<{ x: number; y: number; projectId: string; iso: string } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  /** Added since Focus or the filter last changed: stay visible even if those wouldn't show them yet. */
+  const [newIds, setNewIds] = useState<Set<string>>(() => new Set());
   const [projectModal, setProjectModal] = useState<string | null>(null);
   const [msDrag, setMsDrag] = useState<{ id: string; originX: number; date: string; delta: number } | null>(null);
 
@@ -259,7 +260,9 @@ export function GanttView() {
 
   const add = (parentId: string | null, kind: 'project' | 'group' | 'task') => {
     const name = kind === 'project' ? t('wbs.defaultProject') : kind === 'group' ? t('wbs.defaultGroup') : t('wbs.defaultTask');
-    setEditingId(addNode(parentId, kind, name));
+    const id = addNode(parentId, kind, name);
+    setEditingId(id);
+    setNewIds((ids) => new Set(ids).add(id));
   };
   const [link, setLink] = useState<LinkState | null>(null);
   const [notice, setNotice] = useState<{ text: string; tone: 'ok' | 'bad' } | null>(null);
@@ -291,7 +294,10 @@ export function GanttView() {
   );
   const inCharge = useAppStore((s) => s.settings.inChargeFilter);
   const chargeIds = useMemo(() => inChargeRowIds(nodes, inCharge), [nodes, inCharge]);
-  const rows = flattenTree(nodes).filter((n) => !hiddenIds.has(n.id) && (!focusIds || focusIds.has(n.id)) && (!chargeIds || chargeIds.has(n.id)));
+  useEffect(() => setNewIds(new Set()), [focusWeeks, inCharge]);
+  const rows = flattenTree(nodes).filter(
+    (n) => !hiddenIds.has(n.id) && (newIds.has(n.id) || ((!focusIds || focusIds.has(n.id)) && (!chargeIds || chargeIds.has(n.id)))),
+  );
 
   /** Moving rows (same rules as WBS): drag the ⠿ handle onto another row. */
   const rowSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -791,7 +797,6 @@ export function GanttView() {
               const c = computed.get(node.id);
               if (!c) return null;
               const hasKids = (kids.get(node.id) ?? []).length > 0;
-              const blocked = c.isLeaf && node.status !== 'done' && blockers(node, nodes).length > 0;
               return (
                 <GanttDndRow
                   key={node.id}
@@ -806,95 +811,15 @@ export function GanttView() {
                     className={cx('sticky left-0 z-20 flex shrink-0 items-center gap-1 border-r border-slate-200 text-sm', KIND_ROW_BG[node.kind], KIND_ACCENT[node.kind])}
                     style={{ width: NAME_W, paddingLeft: `${c.depth * 1.25 + 0.5}rem` }}
                   >
-                    <button
-                      ref={handle.setActivatorNodeRef}
-                      {...handle.listeners}
-                      {...handle.attributes}
-                      title={t('wbs.dragRow')}
-                      aria-label={t('wbs.dragRow')}
-                      className="-ml-1.5 w-4 shrink-0 cursor-grab touch-none text-slate-300 hover:text-slate-600 active:cursor-grabbing group-hover/row:text-slate-400"
-                    >
-                      ⠿
-                    </button>
-                    {hasKids ? (
-                      <button className="w-5 shrink-0 text-slate-500 hover:text-slate-900" onClick={() => toggleCollapsed(node.id)} aria-label="toggle">
-                        {node.collapsed ? '▶' : '▼'}
-                      </button>
-                    ) : (
-                      <span className={cx('w-5 shrink-0 text-center', KIND_ICON_COLOR[node.kind])}>{KIND_ICON[node.kind]}</span>
-                    )}
-                    {editingId === node.id ? (
-                      <InlineText
-                        autoFocus
-                        value={node.name}
-                        className="text-sm"
-                        onCommit={(v) => v.trim() && updateNode(node.id, { name: v.trim() })}
-                        onDone={() => setEditingId(null)}
-                      />
-                    ) : (
-                      <button
-                        className={cx(
-                          'min-w-0 truncate text-left hover:underline',
-                          KIND_TEXT[node.kind],
-                          node.status === 'done' && '!text-slate-400 line-through',
-                        )}
-                        title={t('wbs.open')}
-                        onClick={() => openTask(node.id)}
-                      >
-                        {node.name}
-                      </button>
-                    )}
-                    {node.notRelevant && <NotRelevantBadge />}
-                    {blocked && <span title={t('deps.blockedBy', { names: blockers(node, nodes).map((b) => b.name).join(', ') })}>🔒</span>}
-                    {editingId !== node.id && node.kind !== 'task' && (
-                      <button
-                        className="ml-auto mr-1 grid h-5 w-5 shrink-0 place-items-center rounded border border-slate-300 text-xs font-semibold leading-none text-slate-500 hover:bg-slate-100 group-hover/row:hidden"
-                        title={t('wbs.addTaskIn', { name: node.name })}
-                        aria-label={t('wbs.addTaskIn', { name: node.name })}
-                        onClick={() => add(node.id, 'task')}
-                      >
-                        +
-                      </button>
-                    )}
-                    {editingId !== node.id && (
-                      <div className="ml-auto mr-1 hidden shrink-0 items-center gap-0.5 group-hover/row:flex">
-                        {node.kind === 'task' && c.isLeaf && <NotRelevantToggle node={node} />}
-                        <button className="grid h-6 w-6 place-items-center rounded text-slate-500 hover:bg-slate-200" title={t('wbs.open')} onClick={() => openTask(node.id)}>
-                          ⤢
-                        </button>
-                        {node.parentId === null && (
-                          <button className="grid h-6 w-6 place-items-center rounded text-slate-500 hover:bg-slate-200" title={t('gantt.projectHint')} onClick={() => setProjectModal(node.id)}>
-                            ◆
-                          </button>
-                        )}
-                        <CompleteToggle node={node} />
-                        <button
-                          className="grid h-6 w-6 place-items-center rounded text-slate-400 hover:bg-rose-100 hover:text-rose-700"
-                          title={t('wbs.delete')}
-                          onClick={() => confirm(t('wbs.deleteConfirm', { name: node.name })) && deleteNode(node.id)}
-                        >
-                          ✕
-                        </button>
-                        {node.kind !== 'task' && (
-                          <>
-                            <button
-                              className="rounded border border-emerald-300 bg-emerald-50 px-1.5 text-[11px] font-medium text-emerald-700 hover:bg-emerald-100"
-                              title={t('wbs.addTaskIn', { name: node.name })}
-                              onClick={() => add(node.id, 'task')}
-                            >
-                              + {t('kind.task')}
-                            </button>
-                            <button
-                              className="rounded border border-sky-300 bg-sky-50 px-1.5 text-[11px] font-medium text-sky-700 hover:bg-sky-100"
-                              title={t('wbs.addGroupIn', { name: node.name })}
-                              onClick={() => add(node.id, 'group')}
-                            >
-                              + {t('kind.group')}
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    )}
+                    <RowName
+                      node={node}
+                      isLeaf={c.isLeaf}
+                      hasKids={hasKids}
+                      handle={handle}
+                      editing={editingId === node.id}
+                      onEditing={(on) => setEditingId(on ? node.id : null)}
+                      onAdd={(kind) => add(node.id, kind)}
+                    />
                   </div>
                   <div
                     className={cx('relative', focusWeeks > 0 && 'overflow-hidden', node.kind !== 'task' || (scale === 'day' && plannable(node)) ? 'cursor-cell' : scale !== 'day' && 'cursor-zoom-in')}
@@ -1155,12 +1080,6 @@ export function GanttView() {
       )}
     </div>
   );
-}
-
-interface RowHandle {
-  listeners: DraggableSyntheticListeners;
-  attributes: DraggableAttributes;
-  setActivatorNodeRef: (el: HTMLElement | null) => void;
 }
 
 /** A Gantt row that can be dragged by its handle and dropped on (same rules as WBS). */
