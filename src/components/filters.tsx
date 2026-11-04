@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import type { DateRange, NumRange } from '../domain/listFilter';
-import { cx } from './ui';
+import { cx, DateInput } from './ui';
 
 /** Shared filter widgets (Task List panel, board "All" column). */
 export function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -39,12 +39,12 @@ export function Chips<T extends string>({ options, selected, onChange }: { optio
 }
 
 export function DateRangeInput({ value, onChange }: { value: DateRange; onChange: (v: DateRange) => void }) {
-  const cls = 'w-[9.5rem] rounded border border-slate-300 px-1.5 py-1 text-sm';
+  const cls = 'border border-slate-300';
   return (
     <div className="flex items-center gap-1.5">
-      <input type="date" className={cls} value={value.from ?? ''} max={value.to ?? undefined} onChange={(e) => onChange({ ...value, from: e.target.value || null })} />
+      <DateInput className={cls} value={value.from} max={value.to ?? undefined} onChange={(v) => onChange({ ...value, from: v })} />
       <span className="text-slate-400">–</span>
-      <input type="date" className={cls} value={value.to ?? ''} min={value.from ?? undefined} onChange={(e) => onChange({ ...value, to: e.target.value || null })} />
+      <DateInput className={cls} value={value.to} min={value.from ?? undefined} onChange={(v) => onChange({ ...value, to: v })} />
     </div>
   );
 }

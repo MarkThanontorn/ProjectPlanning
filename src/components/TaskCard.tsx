@@ -29,7 +29,7 @@ export function BlockedNote({ node }: { node: WbsNode }) {
 
 export function TimerButtons({ node, size = 'sm' }: { node: WbsNode; size?: 'sm' | 'lg' }) {
   const { t } = useTranslation();
-  const { startTimer, pauseTimer, completeTask } = useAppStore();
+  const { startTimer, pauseTimer, completeTask, setCompleted } = useAppStore();
   const waitingFor = useBlockers(node);
   const running = isRunning(node);
   const done = node.status === 'done';
@@ -50,9 +50,15 @@ export function TimerButtons({ node, size = 'sm' }: { node: WbsNode; size?: 'sm'
       <button className={cx(btn, 'border-slate-400 text-slate-700 hover:bg-slate-50')} disabled={!running} onClick={stop(() => pauseTimer(node.id))}>
         {t('timer.pause')}
       </button>
-      <button className={cx(btn, 'border-slate-800 bg-slate-800 text-white hover:bg-slate-700')} disabled={done} onClick={stop(() => completeTask(node.id))}>
-        {t('timer.complete')}
-      </button>
+      {done ? (
+        <button className={cx(btn, 'border-emerald-600 bg-emerald-50 text-emerald-700 hover:bg-emerald-100')} title={t('complete.reopen')} onClick={stop(() => setCompleted(node.id, false))}>
+          ↩ {t('timer.reopen')}
+        </button>
+      ) : (
+        <button className={cx(btn, 'border-slate-800 bg-slate-800 text-white hover:bg-slate-700')} onClick={stop(() => completeTask(node.id))}>
+          {t('timer.complete')}
+        </button>
+      )}
     </div>
   );
 }
@@ -68,6 +74,43 @@ export function TimeUsing({ node, className }: { node: WbsNode; className?: stri
       <span className="rounded border border-slate-300 px-1.5 font-mono tabular-nums text-slate-900">{formatDuration(loggedHours(node.timeLogs, now))}</span>
       Hr
     </span>
+  );
+}
+
+/** The task's Check-List on a card: tick items without opening the task. */
+function Subtasks({ node, limit = 4 }: { node: WbsNode; limit?: number }) {
+  const { t } = useTranslation();
+  const updateNode = useAppStore((s) => s.updateNode);
+  const openTask = useAppStore((s) => s.openTask);
+  const items = node.checklist;
+  if (items.length === 0) return null;
+  const more = items.length - limit;
+  return (
+    <div className="mt-1.5 border-t border-slate-100 pt-1.5" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
+      <div className="mb-0.5 text-[11px] font-medium text-slate-500">
+        {t('detail.checklist')} {items.filter((i) => i.done).length}/{items.length}
+      </div>
+      <ul className="space-y-0.5">
+        {items.slice(0, limit).map((item) => (
+          <li key={item.id}>
+            <label className="flex cursor-pointer items-start gap-1.5 text-xs text-slate-700">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-3 w-3 shrink-0 accent-emerald-600"
+                checked={item.done}
+                onChange={() => updateNode(node.id, { checklist: items.map((i) => (i.id === item.id ? { ...i, done: !i.done } : i)) })}
+              />
+              <span className={cx('min-w-0 break-words', item.done && 'text-slate-400 line-through')}>{item.text}</span>
+            </label>
+          </li>
+        ))}
+      </ul>
+      {more > 0 && (
+        <button className="mt-0.5 text-[11px] text-slate-500 hover:underline" onClick={() => openTask(node.id)}>
+          {t('board.moreSubtasks', { n: more })}
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -99,7 +142,8 @@ export function TaskCard({ node, computed }: { node: WbsNode; computed: Computed
         <dt className="text-slate-500">{t('col.progress')}</dt>
         <dd><ProgressBar value={node.progress} /></dd>
       </dl>
-      <div className="mb-2 flex justify-end">
+      <Subtasks node={node} />
+      <div className="mb-2 mt-2 flex justify-end">
         <TimeUsing node={node} />
       </div>
       <TimerButtons node={node} />
@@ -108,17 +152,43 @@ export function TaskCard({ node, computed }: { node: WbsNode; computed: Computed
 }
 
 /** Compact one-line card used in the matrix, status columns and "All" list. */
-export function MiniCard({ node, computed, extra }: { node: WbsNode; computed: Computed | undefined; extra?: React.ReactNode }) {
+export function MiniCard({
+  node,
+  computed,
+  extra,
+  onRemove,
+}: {
+  node: WbsNode;
+  computed: Computed | undefined;
+  extra?: React.ReactNode;
+  /** Shows a ✕ on hover that takes the card off the board. */
+  onRemove?: () => void;
+}) {
+  const { t } = useTranslation();
   const openTask = useAppStore((s) => s.openTask);
   const running = isRunning(node);
   return (
     <div
       className={cx(
-        'cursor-pointer rounded-md border bg-white px-2.5 py-2 text-sm shadow-sm hover:shadow-md',
+        'group/card relative cursor-pointer rounded-md border bg-white px-2.5 py-2 text-sm shadow-sm hover:shadow-md',
         running ? 'border-emerald-500' : 'border-slate-300',
       )}
       onClick={() => openTask(node.id)}
     >
+      {onRemove && (
+        <button
+          className="absolute right-0.5 top-0.5 z-10 hidden h-5 w-5 place-items-center rounded-full border border-slate-300 bg-white text-[10px] text-slate-500 shadow hover:text-rose-600 group-hover/card:grid"
+          title={t('board.removeHint')}
+          aria-label={t('board.removeHint')}
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove();
+          }}
+        >
+          ✕
+        </button>
+      )}
       <div className={cx('flex items-start gap-2', node.status === 'done' && 'text-slate-400 line-through')}>
         {running && <span className="mt-1.5 h-2 w-2 shrink-0 animate-pulse rounded-full bg-rose-500" />}
         <span className="flex-1">{taskTitle(node, computed)}</span>
@@ -130,6 +200,7 @@ export function MiniCard({ node, computed, extra }: { node: WbsNode; computed: C
         {node.inCharge && <span>· {node.inCharge}</span>}
       </div>
       <ProgressBar value={node.progress} className="mt-1.5" />
+      <Subtasks node={node} />
       {extra && <div className="mt-1.5 flex flex-wrap gap-1">{extra}</div>}
     </div>
   );

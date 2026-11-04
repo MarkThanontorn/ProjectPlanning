@@ -44,11 +44,17 @@ interface AppState extends AppData {
   /** Moves a node to `index` among the children of `parentId` (drag & drop). */
   moveNodeTo(id: string, parentId: string | null, index: number): void;
   toggleCollapsed(id: string): void;
+  /** Collapse or expand every project / group. */
+  collapseAll(collapsed: boolean): void;
 
   startTimer(id: string): void;
   pauseTimer(id: string): void;
   completeTask(id: string): void;
   setStatus(id: string, status: Status): void;
+  /** Progress and status move together: 100% completes the task, lower reopens it. */
+  setProgress(id: string, progress: number): void;
+  /** Takes a card off this week's boards: back to Queue, progress kept, until the week after. */
+  removeFromBoard(id: string, weekStart: string): void;
   /** Mark any node complete (struck through) or reopen it. Tasks use the normal complete flow. */
   setCompleted(id: string, done: boolean): void;
   /** Puts a task on the given day's list (null removes it). */
@@ -248,13 +254,20 @@ export const useAppStore = create<AppState>((set, get) => {
       mapNode(id, (n) => ({ ...n, collapsed: !n.collapsed }));
     },
 
+    collapseAll(collapsed) {
+      commit((s) => {
+        const parents = new Set(s.nodes.map((n) => n.parentId));
+        return { nodes: s.nodes.map((n) => (parents.has(n.id) && n.collapsed !== collapsed ? { ...n, collapsed } : n)) };
+      });
+    },
+
     startTimer(id) {
       const target = get().nodes.find((n) => n.id === id);
       if (!target || blockers(target, get().nodes).length > 0) return;
       // One running timer at a time: starting a task pauses the others.
       const now = new Date();
       commit((s) => ({
-        nodes: s.nodes.map((n) => (n.id === id ? startTimer(n, now) : isRunning(n) ? pauseTimer(n, now) : n)),
+        nodes: s.nodes.map((n) => (n.id === id ? { ...startTimer(n, now), boardOffWeek: null, progress: n.status === 'done' && n.progress === 100 ? 95 : n.progress } : isRunning(n) ? pauseTimer(n, now) : n)),
       }));
     },
     pauseTimer(id) {
@@ -273,8 +286,23 @@ export const useAppStore = create<AppState>((set, get) => {
           status,
           actualEnd: n.status === 'done' ? null : base.actualEnd,
           progress: n.status === 'done' && n.progress === 100 ? 95 : base.progress,
+          boardOffWeek: null,
         };
       });
+    },
+
+    setProgress(id, progress) {
+      if (progress >= 100) return get().completeTask(id);
+      mapNode(id, (n) => ({
+        ...n,
+        progress,
+        status: n.status === 'done' || (n.status === 'queue' && progress > 0) ? 'in_progress' : n.status,
+        actualEnd: n.status === 'done' ? null : n.actualEnd,
+      }));
+    },
+
+    removeFromBoard(id, weekStart) {
+      mapNode(id, (n) => ({ ...pauseTimer(n), status: 'queue', boardOffWeek: weekStart }));
     },
 
     setCompleted(id, done) {

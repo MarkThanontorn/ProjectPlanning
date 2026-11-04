@@ -1,16 +1,17 @@
 import type { TFunction } from 'i18next';
+import { fmtYmdTime } from '../../domain/dates';
 import { useAppStore } from '../../store/useAppStore';
 import { CREATE, DELETED } from '../../team/model';
 import { ONLINE_MS } from '../../team/teamStore';
 
 const locale = (lang: string) => (lang === 'th' ? 'th-TH' : 'en-GB');
 
-/** "11:42" today, otherwise "19 Oct 11:42". */
+/** "11:42" today, otherwise "2026/10/19 11:42". */
 export function fmtWhen(iso: string | null | undefined, lang: string): string {
   if (!iso) return '—';
   const d = new Date(iso);
   const today = new Date().toDateString() === d.toDateString();
-  return new Intl.DateTimeFormat(locale(lang), today ? { hour: '2-digit', minute: '2-digit' } : { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(d);
+  return today ? new Intl.DateTimeFormat(locale(lang), { hour: '2-digit', minute: '2-digit' }).format(d) : fmtYmdTime(d);
 }
 
 /** "3 min ago" style. */

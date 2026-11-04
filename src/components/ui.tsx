@@ -1,7 +1,7 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { format, parseISO } from 'date-fns';
 import { leadtimeParts, round2 } from '../domain/calc';
+import { fmtYmd, parseDateText } from '../domain/dates';
 import { PROGRESS_STEPS, type Rank, type Status } from '../domain/types';
 import { useAppStore } from '../store/useAppStore';
 import { NAV, type NavItem } from '../nav';
@@ -69,29 +69,87 @@ export function InlineText({
   );
 }
 
+/**
+ * Date field shown as YYYY/MM/DD on every computer (a browser date input follows the PC's locale).
+ * Type a date, or use the calendar button; an empty or unreadable entry doesn't change anything else.
+ */
 export function DateInput({
   value,
   onChange,
   placeholder,
+  min,
+  max,
+  className,
 }: {
   value: string | null;
   onChange: (v: string | null) => void;
+  /** Grey value shown when empty, e.g. a date rolled up from the tasks inside (ISO). */
   placeholder?: string | null;
+  min?: string;
+  max?: string;
+  className?: string;
 }) {
+  const { t } = useTranslation();
+  const shown = value ? fmtYmd(value) : '';
+  const [draft, setDraft] = useState(shown);
+  const picker = useRef<HTMLInputElement>(null);
+  useEffect(() => setDraft(shown), [shown]);
+  const commit = () => {
+    const text = draft.trim();
+    if (!text) return void (value && onChange(null));
+    const iso = parseDateText(text);
+    if (!iso) return setDraft(shown);
+    setDraft(fmtYmd(iso));
+    if (iso !== value) onChange(iso);
+  };
   return (
-    <input
-      type="date"
-      className={cx(
-        'w-[8.5rem] rounded bg-transparent px-1 py-1 text-sm outline-none hover:bg-slate-100 focus:ring-2 focus:ring-emerald-500',
-        !value && 'text-slate-400',
-      )}
-      value={value ?? placeholder ?? ''}
-      onChange={(e) => onChange(e.target.value || null)}
-    />
+    <span className={cx('relative inline-flex w-[7.5rem] items-center rounded hover:bg-slate-100 focus-within:ring-2 focus-within:ring-emerald-500', className)}>
+      <input
+        className="w-full min-w-0 bg-transparent py-1 pl-1 text-sm tabular-nums outline-none placeholder:text-slate-400"
+        value={draft}
+        placeholder={placeholder ? fmtYmd(placeholder) : 'YYYY/MM/DD'}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') e.currentTarget.blur();
+          if (e.key === 'Escape') setDraft(shown);
+        }}
+      />
+      <button
+        type="button"
+        tabIndex={-1}
+        className="shrink-0 px-1 text-slate-400 hover:text-slate-700"
+        title={t('app.pickDate')}
+        aria-label={t('app.pickDate')}
+        onClick={() => {
+          try {
+            picker.current?.showPicker();
+          } catch {
+            picker.current?.focus();
+          }
+        }}
+      >
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
+          <rect x="2" y="3" width="12" height="11" rx="1.5" />
+          <path d="M2 6.5h12M5.5 1.5v3M10.5 1.5v3" strokeLinecap="round" />
+        </svg>
+      </button>
+      <input
+        ref={picker}
+        type="date"
+        tabIndex={-1}
+        aria-hidden
+        className="pointer-events-none absolute bottom-0 right-0 h-0 w-0 opacity-0"
+        value={value ?? ''}
+        min={min}
+        max={max}
+        onChange={(e) => onChange(e.target.value || null)}
+      />
+    </span>
   );
 }
 
-export const fmtDate = (iso: string | null) => (iso ? format(parseISO(iso), 'd MMM') : '—');
+export const fmtDate = (iso: string | null) => (iso ? fmtYmd(iso) : '—');
 
 export function ProgressBar({ value, className }: { value: number; className?: string }) {
   return (
@@ -232,11 +290,13 @@ function HoursOverrideCell({
       </button>
       {overridden && (
         <button
-          className="rounded bg-amber-100 px-1 text-[10px] font-medium text-amber-700 hover:bg-amber-200"
-          title={t(field === 'leadtimeOverrideHrs' ? 'lt.resetPlan' : 'lt.reset')}
+          className="group/m grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full bg-amber-100 text-[9px] leading-none text-amber-700 hover:bg-amber-200"
+          title={`${t('lt.override')} — ${t(field === 'leadtimeOverrideHrs' ? 'lt.resetPlan' : 'lt.reset')}`}
+          aria-label={t(field === 'leadtimeOverrideHrs' ? 'lt.resetPlan' : 'lt.reset')}
           onClick={() => updateNode(id, { [field]: null })}
         >
-          {t('lt.override')} ✕
+          <span className="group-hover/m:hidden">✎</span>
+          <span className="hidden group-hover/m:inline">✕</span>
         </button>
       )}
     </div>

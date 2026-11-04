@@ -38,7 +38,7 @@ import {
 } from '../../components/ui';
 import { ColumnManager } from './ColumnManager';
 import { ResizeHandle } from '../../components/ResizeHandle';
-import { CompleteToggle, HideCompletedToggle } from '../../components/completion';
+import { CollapseAllButtons, CompleteToggle, HideCompletedToggle } from '../../components/completion';
 import { completedIds } from '../../domain/completion';
 import { DROP_PREFIX, ROW_PREFIX, rowDropFor, type DropPos, type RowDrop } from '../../components/rowDnd';
 import { KIND_ACCENT, KIND_ICON, KIND_ICON_COLOR, KIND_ROW_BG, KIND_ROW_BORDER, KIND_TEXT } from '../../kindStyle';
@@ -226,7 +226,7 @@ function Cell({ col, node, c }: { col: ColumnDef; node: WbsNode; c: Computed }) 
       );
     case 'progress':
       return node.kind === 'task' && c.isLeaf ? (
-        <ProgressSlider value={node.progress} onChange={(v) => set({ progress: v })} />
+        <ProgressSlider value={node.progress} onChange={(v) => useAppStore.getState().setProgress(node.id, v)} />
       ) : (
         <div title={t('wbs.autoHint')}>
           <ProgressBar value={c.progress} className="w-40" />
@@ -471,6 +471,7 @@ export function WbsView() {
         navKey="wbs"
         aside={
           <div className="relative flex gap-2">
+            <CollapseAllButtons />
             <HideCompletedToggle />
             <button
               className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium hover:bg-slate-100"

@@ -1,11 +1,14 @@
 import { useTranslation } from 'react-i18next';
-import { format, parseISO } from 'date-fns';
 import { STATUSES, WIP_LIMIT } from '../../domain/types';
 import { isThisWeek, weekRange } from '../../domain/week';
 import { useComputed, useLeafTasks, useNow } from '../../hooks';
 import { MiniCard } from '../../components/TaskCard';
 import { StatusBadge } from '../../components/ui';
-import { BoardLayout, Draggable, DropZone } from './BoardLayout';
+import { BoardLayout, Draggable, DropZone, useRemoveCard } from './BoardLayout';
+import { compareBoard } from '../../domain/boardSort';
+import { todayIso } from '../../domain/calc';
+import { fmtYmd } from '../../domain/dates';
+import { useAppStore } from '../../store/useAppStore';
 
 export function StatusBoard() {
   const { t } = useTranslation();
@@ -13,14 +16,16 @@ export function StatusBoard() {
   const now = useNow(60_000);
   const computed = useComputed(now);
   const week = weekRange(now);
-  const thisWeek = tasks.filter((n) => isThisWeek(n, now));
-  const fmt = (iso: string) => format(parseISO(iso), 'd MMM');
+  const settings = useAppStore((s) => s.settings);
+  const removeCard = useRemoveCard();
+  const today = todayIso(now);
+  const thisWeek = tasks.filter((n) => isThisWeek(n, now)).sort((a, b) => compareBoard(a, b, settings.boardSort, settings, today));
 
   return (
     <BoardLayout navKey="status">
       <div className="flex h-full flex-col rounded-xl border border-slate-200 bg-white p-4">
         <h2 className="mb-3 text-lg font-semibold">
-          {t('board.statusTitle')} <span className="text-sm font-normal text-slate-500">{fmt(week.start)} – {fmt(week.end)}</span>
+          {t('board.statusTitle')} <span className="text-sm font-normal text-slate-500">{fmtYmd(week.start)} – {fmtYmd(week.end)}</span>
         </h2>
         <div className="grid min-h-0 flex-1 grid-cols-4 gap-3">
           {STATUSES.map((status) => {
@@ -43,7 +48,7 @@ export function StatusBoard() {
                 <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
                   {items.map((n) => (
                     <Draggable key={n.id} zone={`st:${status}`} taskId={n.id}>
-                      <MiniCard node={n} computed={computed.get(n.id)} />
+                      <MiniCard node={n} computed={computed.get(n.id)} onRemove={status === 'done' ? undefined : () => removeCard(n)} />
                     </Draggable>
                   ))}
                 </div>

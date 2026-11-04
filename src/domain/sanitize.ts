@@ -3,6 +3,7 @@
  * ones: wrong types fall back to defaults, unknown fields are dropped, and
  * records without an id are rejected — so bad data can't crash the app.
  */
+import { BOARD_SORT_KEYS } from './boardSort';
 import { defaultSettings, defaultToday, newId } from './factory';
 import { RANKS, STATUSES, type ColumnDef, type Milestone, type Settings, type TodayData, type WbsNode } from './types';
 
@@ -59,6 +60,7 @@ export function sanitizeNode(raw: unknown): WbsNode | null {
     dependsOn: strings(raw.dependsOn),
     leadtimeOverrideHrs: numOrNull(raw.leadtimeOverrideHrs),
     actualLeadtimeOverrideHrs: numOrNull(raw.actualLeadtimeOverrideHrs),
+    boardOffWeek: isoDate(raw.boardOffWeek),
     custom,
   };
 }
@@ -101,6 +103,12 @@ export function sanitizeSettings(raw: unknown): Settings {
     lastBackupAt: isoTime(raw.lastBackupAt),
     firstUsedAt: isoTime(raw.firstUsedAt),
     backupSnoozeUntil: isoTime(raw.backupSnoozeUntil),
+    boardSort: {
+      key: oneOf(isObj(raw.boardSort) ? raw.boardSort.key : null, BOARD_SORT_KEYS, d.boardSort.key),
+      dir: oneOf(isObj(raw.boardSort) ? raw.boardSort.dir : null, ['asc', 'desc'] as const, d.boardSort.dir),
+    },
+    ganttNameWidth: Math.min(800, Math.max(160, num(raw.ganttNameWidth, d.ganttNameWidth))),
+    ganttFocusWeeks: oneOf(raw.ganttFocusWeeks, [0, 1, 2] as const, 0),
   };
 }
 

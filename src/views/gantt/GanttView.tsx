@@ -42,10 +42,12 @@ import { useComputed, useFitToViewport, useNow } from '../../hooks';
 import { useAppStore } from '../../store/useAppStore';
 import { cx, InlineText, ViewTitle } from '../../components/ui';
 import { ProjectMilestoneModal } from '../../components/MilestoneEditor';
-import { CompleteToggle, HideCompletedToggle } from '../../components/completion';
+import { CollapseAllButtons, CompleteToggle, HideCompletedToggle } from '../../components/completion';
+import { ResizeHandle } from '../../components/ResizeHandle';
+import { fmtYmd } from '../../domain/dates';
+import { focusRowIds, weekRange } from '../../domain/week';
 import { completedIds } from '../../domain/completion';
 
-const NAME_W = 256;
 const ROW_H = 40;
 
 type Unit = 'day' | 'week' | 'month' | 'quarter' | 'year';
@@ -140,14 +142,14 @@ const TimeGrid = memo(function TimeGrid({ cells, left, top, width }: { cells: Ce
   );
 });
 
-const label = (unit: Unit, d: Date, top: boolean) => {
+const label = (unit: Unit, d: Date, top: boolean, wide: boolean) => {
   switch (unit) {
     case 'day':
-      return format(d, 'd');
+      return format(d, wide ? 'EEE dd' : 'dd');
     case 'week':
-      return format(d, 'd MMM');
+      return fmtYmd(d);
     case 'month':
-      return format(d, top ? 'MMMM yyyy' : 'MMM');
+      return format(d, top ? 'yyyy/MM' : 'MM');
     case 'quarter':
       return `Q${getQuarter(d)}`;
     case 'year':
@@ -197,7 +199,13 @@ function shifted(d: DragState) {
 export function GanttView() {
   const { t } = useTranslation();
   const nodes = useAppStore((s) => s.nodes);
-  const scale = useAppStore((s) => s.settings.ganttScale);
+  const storedScale = useAppStore((s) => s.settings.ganttScale);
+  const focusWeeks = useAppStore((s) => s.settings.ganttFocusWeeks);
+  /** Focus always shows single days, fitted to the window. */
+  const scale = focusWeeks ? 'day' : storedScale;
+  const storedNameW = useAppStore((s) => s.settings.ganttNameWidth);
+  const [liveNameW, setLiveNameW] = useState<number | null>(null);
+  const NAME_W = liveNameW ?? storedNameW;
   const { updateNode, toggleCollapsed, openTask, updateSettings, addDependency, removeDependency, addNode, deleteNode, moveNodeTo } = useAppStore();
   const milestones = useAppStore((s) => s.milestones);
   const updateMilestone = useAppStore((s) => s.updateMilestone);
@@ -213,7 +221,7 @@ export function GanttView() {
   };
   const moveMsDrag = (e: React.PointerEvent) => {
     if (!msDrag) return;
-    const delta = Math.round((e.clientX - msDrag.originX) / SCALES[scale].dayW);
+    const delta = Math.round((e.clientX - msDrag.originX) / dayW);
     if (delta !== msDrag.delta) setMsDrag({ ...msDrag, delta });
   };
   /** Drop moves the milestone; a plain click opens the project's milestone popup. */
@@ -234,7 +242,7 @@ export function GanttView() {
   };
   const moveDueDrag = (e: React.PointerEvent) => {
     if (!dueDrag) return;
-    const delta = Math.round((e.clientX - dueDrag.originX) / SCALES[scale].dayW);
+    const delta = Math.round((e.clientX - dueDrag.originX) / dayW);
     if (delta !== dueDrag.delta) setDueDrag({ ...dueDrag, delta });
   };
   const endDueDrag = () => {
@@ -264,13 +272,19 @@ export function GanttView() {
   const [view, setView] = useState({ left: 0, width: 1200 });
   const pendingShift = useRef(0);
   const cfg = SCALES[scale];
-  const dayW = cfg.dayW;
+  const focusStart = weekRange(now).start;
+  const focusDays = focusWeeks * 7;
+  const dayW = focusWeeks ? Math.max(20, Math.floor((view.width - NAME_W) / focusDays)) : cfg.dayW;
   const today = todayIso(now);
   const headerH = cfg.top ? 52 : 30;
 
   const hideCompleted = useAppStore((s) => s.settings.hideCompleted);
   const hiddenIds = useMemo(() => (hideCompleted ? completedIds(nodes) : new Set<string>()), [hideCompleted, nodes]);
-  const rows = flattenTree(nodes).filter((n) => !hiddenIds.has(n.id));
+  const focusIds = useMemo(
+    () => (focusWeeks ? focusRowIds(nodes, computed, milestones, focusStart, shiftIsoDate(focusStart, focusDays - 1)) : null),
+    [focusWeeks, nodes, computed, milestones, focusStart, focusDays],
+  );
+  const rows = flattenTree(nodes).filter((n) => !hiddenIds.has(n.id) && (!focusIds || focusIds.has(n.id)));
 
   /** Moving rows (same rules as WBS): drag the ⠿ handle onto another row. */
   const rowSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -280,6 +294,7 @@ export function GanttView() {
   const kids = childrenMap(nodes);
 
   const range = useMemo(() => {
+    if (focusWeeks) return { start: parseISO(focusStart), days: focusDays };
     let min = today;
     let max = today;
     for (const c of computed.values()) {
@@ -298,7 +313,7 @@ export function GanttView() {
     const start = u.start(addDays(parseISO(min), -cfg.pad[0] - extra.before));
     const end = u.end(addDays(parseISO(max), cfg.pad[1] + extra.after));
     return { start, days: differenceInCalendarDays(end, start) + 1 };
-  }, [computed, today, cfg, extra, milestones, focusDate]);
+  }, [computed, today, cfg, extra, milestones, focusDate, focusWeeks, focusStart, focusDays]);
 
   const x = (iso: string | Date) => differenceInCalendarDays(typeof iso === 'string' ? parseISO(iso) : iso, range.start) * dayW;
   const todayX = x(today);
@@ -306,8 +321,8 @@ export function GanttView() {
 
   const scrollToToday = useCallback(() => {
     const el = scrollRef.current;
-    if (el) el.scrollLeft = Math.max(0, NAME_W + todayX - el.clientWidth / 3);
-  }, [todayX]);
+    if (el) el.scrollLeft = focusWeeks ? 0 : Math.max(0, NAME_W + todayX - el.clientWidth / 3);
+  }, [todayX, NAME_W, focusWeeks]);
 
   // New scale: drop any extension, then re-center on today once the new range is laid out.
   const centerPending = useRef(true);
@@ -315,12 +330,12 @@ export function GanttView() {
     centerPending.current = true;
     pendingShift.current = 0;
     setExtra({ before: 0, after: 0 });
-  }, [scale]);
+  }, [scale, focusWeeks]);
   useLayoutEffect(() => {
     if (!centerPending.current) return;
     centerPending.current = false;
     const el = scrollRef.current;
-    if (focusDate && el) el.scrollLeft = Math.max(0, NAME_W + x(focusDate) - el.clientWidth / 2);
+    if (focusDate && el && !focusWeeks) el.scrollLeft = Math.max(0, NAME_W + x(focusDate) - el.clientWidth / 2);
     else scrollToToday();
     if (el) setView({ left: el.scrollLeft, width: el.clientWidth });
     // x() is derived from range, which is already a dependency.
@@ -356,7 +371,7 @@ export function GanttView() {
     const next = !s || !e ? { planStart: iso, planEnd: iso } : iso < s ? { planStart: iso, planEnd: e } : { planStart: s, planEnd: iso };
     updateNode(node.id, next);
     setNotice({
-      text: t('gantt.planSet', { name: node.name, start: format(parseISO(next.planStart), 'd MMM'), end: format(parseISO(next.planEnd), 'd MMM yyyy') }),
+      text: t('gantt.planSet', { name: node.name, start: fmtYmd(next.planStart), end: fmtYmd(next.planEnd) }),
       tone: 'ok',
     });
   };
@@ -410,6 +425,7 @@ export function GanttView() {
         ? v
         : { left: el.scrollLeft, width: el.clientWidth },
     );
+    if (focusWeeks) return; // a fixed window: no extending at the edges
     const chunk = EXTEND_DAYS[scale];
     if (el.scrollLeft < EDGE_PX && pendingShift.current === 0) {
       // Width added on the left = days actually added after snapping to the unit start.
@@ -449,14 +465,14 @@ export function GanttView() {
           key: s.toISOString(),
           left,
           width: Math.min(timelineW, xe) - left,
-          text: label(unit, s, unit !== cfg.bottom),
+          text: label(unit, s, unit !== cfg.bottom, dayW >= 60),
           weekend: unit === 'day' && (s.getDay() === 0 || s.getDay() === 6),
         });
       }
       return out;
     };
     return { top: cfg.top ? periods(cfg.top) : [], bottom: periods(cfg.bottom) };
-  }, [range, dayW, cfg, bucket, screen, timelineW]);
+  }, [range, dayW, cfg, bucket, screen, timelineW, NAME_W]);
   const topCells = cells.top;
   const bottomCells = cells.bottom;
 
@@ -541,7 +557,8 @@ export function GanttView() {
     }
     const left = x(plan.planStart);
     const width = Math.max(x(plan.planEnd) - left + dayW, 3);
-    const text = `${format(parseISO(plan.planStart), 'd MMM')} – ${format(parseISO(plan.planEnd), 'd MMM')}`;
+    const text = `${fmtYmd(plan.planStart)} – ${fmtYmd(plan.planEnd)}`;
+    const shortText = text.replace(/\d{4}\//g, '');
 
     if (!leaf)
       return (
@@ -586,7 +603,7 @@ export function GanttView() {
       >
         <div className="h-full bg-emerald-500" style={{ width: `${node.progress}%` }} />
         <span className="pointer-events-none absolute inset-0 flex items-center px-2 text-[11px] font-semibold text-slate-900">
-          {width > 90 ? text : ''}
+          {width > 170 ? text : width > 90 ? shortText : ''}
         </span>
         {width > 12 &&
           (['start', 'end'] as const).map((mode) => (
@@ -658,16 +675,28 @@ export function GanttView() {
             >
               ⊕ {t('wbs.newProject')}
             </button>
+            <CollapseAllButtons />
             <HideCompletedToggle />
             <button className="shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-1 hover:bg-slate-100" onClick={scrollToToday}>
               {t('gantt.goToday')}
             </button>
+            <div className="flex shrink-0 overflow-hidden rounded-lg border border-slate-300 bg-white" title={t('gantt.focusHint')}>
+              {([1, 2] as const).map((w) => (
+                <button
+                  key={w}
+                  className={cx('border-l border-slate-300 px-3 py-1 first:border-l-0', focusWeeks === w ? 'bg-emerald-600 text-white' : 'hover:bg-slate-100')}
+                  onClick={() => updateSettings({ ganttFocusWeeks: focusWeeks === w ? 0 : w })}
+                >
+                  🎯 {t(`gantt.focus${w}`)}
+                </button>
+              ))}
+            </div>
             <div className="flex shrink-0 overflow-hidden rounded-lg border border-slate-300 bg-white">
               {SCALE_ORDER.map((s) => (
                 <button
                   key={s}
-                  className={cx('border-l border-slate-300 px-3 py-1 first:border-l-0', s === scale ? 'bg-slate-800 text-white' : 'hover:bg-slate-100')}
-                  onClick={() => updateSettings({ ganttScale: s })}
+                  className={cx('border-l border-slate-300 px-3 py-1 first:border-l-0', s === scale && !focusWeeks ? 'bg-slate-800 text-white' : 'hover:bg-slate-100')}
+                  onClick={() => updateSettings({ ganttScale: s, ganttFocusWeeks: 0 })}
                 >
                   {t(`gantt.scale.${s}`)}
                 </button>
@@ -686,6 +715,15 @@ export function GanttView() {
               style={{ width: NAME_W }}
             >
               {t('col.name')}
+              <ResizeHandle
+                min={160}
+                onLive={setLiveNameW}
+                onCommit={(w) => {
+                  updateSettings({ ganttNameWidth: w });
+                  setLiveNameW(null);
+                }}
+                onReset={() => updateSettings({ ganttNameWidth: 256 })}
+              />
             </div>
             <TimeHeader
               top={topCells}
@@ -780,6 +818,16 @@ export function GanttView() {
                       </button>
                     )}
                     {blocked && <span title={t('deps.blockedBy', { names: blockers(node, nodes).map((b) => b.name).join(', ') })}>🔒</span>}
+                    {editingId !== node.id && node.kind !== 'task' && (
+                      <button
+                        className="ml-auto mr-1 grid h-5 w-5 shrink-0 place-items-center rounded border border-slate-300 text-xs font-semibold leading-none text-slate-500 hover:bg-slate-100 group-hover/row:hidden"
+                        title={t('wbs.addTaskIn', { name: node.name })}
+                        aria-label={t('wbs.addTaskIn', { name: node.name })}
+                        onClick={() => add(node.id, 'task')}
+                      >
+                        +
+                      </button>
+                    )}
                     {editingId !== node.id && (
                       <div className="ml-auto mr-1 hidden shrink-0 items-center gap-0.5 group-hover/row:flex">
                         {node.kind === 'task' && c.isLeaf && (
@@ -822,7 +870,7 @@ export function GanttView() {
                     )}
                   </div>
                   <div
-                    className={cx('relative', scale !== 'day' ? 'cursor-zoom-in' : plannable(node) && 'cursor-cell')}
+                    className={cx('relative', focusWeeks > 0 && 'overflow-hidden', scale !== 'day' ? 'cursor-zoom-in' : plannable(node) && 'cursor-cell')}
                     style={{ width: timelineW }}
                     title={scale !== 'day' ? t('gantt.zoomHint') : plannable(node) ? t('gantt.planHint') : undefined}
                     onClick={(e) => onTimelineClick(e, node)}
@@ -849,7 +897,7 @@ export function GanttView() {
                               node.status === 'done' ? 'text-emerald-500' : due < today ? 'text-rose-500' : 'text-amber-400',
                             )}
                             style={{ left: x(due) + dayW / 2 }}
-                            title={t('gantt.dueDragHint', { date: format(parseISO(due), 'd MMM yyyy') })}
+                            title={t('gantt.dueDragHint', { date: fmtYmd(due) })}
                             onPointerDown={(e) => beginDueDrag(e, node.id, node.dueDate!)}
                             onPointerMove={moveDueDrag}
                             onPointerUp={endDueDrag}
@@ -861,7 +909,7 @@ export function GanttView() {
                             </svg>
                             {dragging && (
                               <span className="pointer-events-none absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-1.5 py-0.5 text-[10px] font-medium text-white">
-                                {t('col.dueDate')} · {format(parseISO(due), 'd MMM')}
+                                {t('col.dueDate')} · {fmtYmd(due)}
                               </span>
                             )}
                           </div>
@@ -879,7 +927,7 @@ export function GanttView() {
                               data-gantt-control
                               className="absolute top-1/2 z-[9] -translate-x-1/2 -translate-y-1/2 cursor-ew-resize touch-none p-1"
                               style={{ left: x(date) + dayW / 2 }}
-                              title={t('gantt.milestoneHint', { name: m.name, date: format(parseISO(m.date), 'd MMM yyyy') })}
+                              title={t('gantt.milestoneHint', { name: m.name, date: fmtYmd(m.date) })}
                               onPointerDown={(e) => beginMsDrag(e, m.id, m.date)}
                               onPointerMove={moveMsDrag}
                               onPointerUp={() => endMsDrag(node.id)}
@@ -894,7 +942,7 @@ export function GanttView() {
                               />
                               {dragging ? (
                                 <span className="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-800 px-1.5 py-0.5 text-[10px] font-medium text-white">
-                                  {m.name} · {format(parseISO(date), 'd MMM')}
+                                  {m.name} · {fmtYmd(date)}
                                 </span>
                               ) : (
                                 <span
@@ -916,6 +964,7 @@ export function GanttView() {
               );
             })}
 
+            {focusWeeks > 0 && rows.length === 0 && <div className="sticky left-0 w-max px-4 py-3 text-sm text-slate-400">{t('gantt.focusEmpty')}</div>}
             <div className="flex border-b border-slate-100" style={{ height: ROW_H }}>
               <div className="sticky left-0 z-20 flex shrink-0 items-center bg-white px-3" style={{ width: NAME_W }}>
                 <button
@@ -928,7 +977,7 @@ export function GanttView() {
             </div>
 
             {/* Dependency arrows */}
-            <svg className="pointer-events-none absolute top-0 z-[7] overflow-visible" style={{ left: NAME_W }} width={timelineW} height={rows.length * ROW_H}>
+            <svg className={cx('pointer-events-none absolute top-0 z-[7]', focusWeeks ? 'overflow-hidden' : 'overflow-visible')} style={{ left: NAME_W }} width={timelineW} height={rows.length * ROW_H}>
               <defs>
                 {(['ok', 'bad', 'link'] as const).map((k) => (
                   <marker key={k} id={`arrow-${k}`} viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
@@ -984,13 +1033,13 @@ export function GanttView() {
           {/* Today marker */}
           <div className="pointer-events-none absolute bottom-0 top-0 z-[15] w-0.5 bg-rose-500" style={{ left: NAME_W + todayX + dayW / 2 }}>
             <span className="absolute left-1 top-1 whitespace-nowrap rounded bg-rose-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-              {t('gantt.today')} · {format(now, 'd MMM')}
+              {t('gantt.today')} · {fmtYmd(now)}
             </span>
           </div>
         </div>
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-        <span className="text-slate-500">🔍 {scale === 'day' ? t('gantt.createHint') : t('gantt.zoomHint')}</span>
+        <span className="text-slate-500">🔍 {scale === 'day' ? t('gantt.planFooter') : t('gantt.zoomHint')}</span>
         <span className="text-slate-500">🔗 {t('deps.ganttHint')}</span>
         {arrows.some((a) => a.conflict) && <span className="text-rose-600">⚠ {t('deps.ganttConflict')}</span>}
       </div>

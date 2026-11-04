@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { parseISO } from 'date-fns';
 import { formatDuration, hoursOnDate, isRunning, shiftIsoDate, todayIso } from '../../domain/calc';
-import { comparePriority, placement } from '../../domain/eisenhower';
+import { placement } from '../../domain/eisenhower';
 import { blockers } from '../../domain/deps';
 import { WIP_LIMIT, type Computed, type WbsNode } from '../../domain/types';
 import { useLeafTasks, useNow } from '../../hooks';
@@ -12,6 +12,8 @@ import { useDaysLeftLabel } from '../../components/EisenhowerControls';
 import { cx, FocusWarning, RankBadge } from '../../components/ui';
 import { PickTaskDialog } from '../today/PickTaskDialog';
 import { routineDueOn } from '../../domain/routine';
+import { fmtYmd } from '../../domain/dates';
+import { compareBoard } from '../../domain/boardSort';
 import { Routines } from './Routines';
 import { Draggable, DropZone } from './dnd';
 
@@ -34,7 +36,7 @@ export function TodayColumn({ date, onDateChange, computed }: { date: string; on
   const highlightIds = todayData.highlights[date] ?? [];
   const onDay = useMemo(() => {
     const list = tasks.filter((n) => n.todayDate === date);
-    const open = list.filter((n) => n.status !== 'done').sort((a, b) => comparePriority(a, b, settings, date));
+    const open = list.filter((n) => n.status !== 'done').sort((a, b) => compareBoard(a, b, settings.boardSort, settings, date));
     return [...open, ...list.filter((n) => n.status === 'done')];
   }, [tasks, date, settings]);
   const highlights = highlightIds.map((id) => onDay.find((n) => n.id === id)).filter((n): n is WbsNode => !!n);
@@ -49,7 +51,7 @@ export function TodayColumn({ date, onDateChange, computed }: { date: string; on
   const dueRoutines = todayData.routines.filter((r) => routineDueOn(r, date));
 
   const isToday = date === realToday;
-  const dayLabel = new Intl.DateTimeFormat(i18n.language === 'th' ? 'th-TH' : 'en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).format(parseISO(date));
+  const dayLabel = `${new Intl.DateTimeFormat(i18n.language === 'th' ? 'th-TH' : 'en-GB', { weekday: 'short' }).format(parseISO(date))} ${fmtYmd(date)}`;
 
   return (
     <DropZone id="today" className="flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white">

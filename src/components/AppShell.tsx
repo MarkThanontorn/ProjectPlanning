@@ -13,6 +13,7 @@ import { BackupReminder } from './BackupReminder';
 import { InstallButton, UpdateBanner } from './AppUpdate';
 import { TeamOverlays, TeamPanel } from './team/TeamPanel';
 import { useTeamStore } from '../team/teamStore';
+import { fmtYmdTime } from '../domain/dates';
 
 function isAppData(x: unknown): x is AppData {
   const d = x as AppData;
@@ -198,11 +199,11 @@ function TeamName() {
 
 /** One-line storage status: persistent or not, and when the last backup was made. */
 function StorageStatus() {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const persisted = useAppStore((s) => s.storagePersisted);
   const lastBackupAt = useAppStore((s) => s.settings.lastBackupAt);
   const when = lastBackupAt
-    ? new Intl.DateTimeFormat(i18n.language === 'th' ? 'th-TH' : 'en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(lastBackupAt))
+    ? fmtYmdTime(lastBackupAt)
     : t('backup.none');
   return (
     <div

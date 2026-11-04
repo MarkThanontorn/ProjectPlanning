@@ -44,3 +44,20 @@ export function HideCompletedToggle() {
     </button>
   );
 }
+
+/** Collapse or expand every project / group (WBS and Gantt). */
+export function CollapseAllButtons() {
+  const { t } = useTranslation();
+  const collapseAll = useAppStore((s) => s.collapseAll);
+  const cls = 'border-l border-slate-300 px-2.5 py-1.5 text-sm font-medium first:border-l-0 hover:bg-slate-100';
+  return (
+    <div className="flex shrink-0 overflow-hidden rounded-lg border border-slate-300 bg-white">
+      <button type="button" className={cls} title={t('wbs.collapseAllHint')} onClick={() => collapseAll(true)}>
+        ⊟ {t('wbs.collapseAll')}
+      </button>
+      <button type="button" className={cls} title={t('wbs.expandAllHint')} onClick={() => collapseAll(false)}>
+        ⊞ {t('wbs.expandAll')}
+      </button>
+    </div>
+  );
+}

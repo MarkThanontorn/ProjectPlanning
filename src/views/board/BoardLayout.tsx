@@ -11,8 +11,11 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core';
 import { todayIso } from '../../domain/calc';
+import { BOARD_SORT_KEYS, compareBoard } from '../../domain/boardSort';
+import { toast } from '../../team/teamStore';
+import { weekRange } from '../../domain/week';
 import { placement } from '../../domain/eisenhower';
-import { RANKS, STATUSES, WIP_LIMIT, type Status, type WbsNode } from '../../domain/types';
+import { RANKS, STATUSES, WIP_LIMIT, type BoardSortKey, type Status, type WbsNode } from '../../domain/types';
 import { activeCount, emptyFilter, matches, type ListFilter } from '../../domain/listFilter';
 import { completedIds } from '../../domain/completion';
 import { Chips, DateRangeInput, Field } from '../../components/filters';
@@ -34,6 +37,49 @@ const readCollapsed = () => {
   }
 };
 
+/** Takes a card off this week's boards (it stays in All, WBS and Gantt). */
+export function useRemoveCard() {
+  const { t } = useTranslation();
+  const removeFromBoard = useAppStore((s) => s.removeFromBoard);
+  return (node: WbsNode) => {
+    removeFromBoard(node.id, weekRange().start);
+    toast(t('board.removed', { name: node.name }), 'info');
+  };
+}
+
+/** "Sort by" for every list on the boards; remembered. */
+function BoardSortControl() {
+  const { t } = useTranslation();
+  const sort = useAppStore((s) => s.settings.boardSort);
+  const updateSettings = useAppStore((s) => s.updateSettings);
+  return (
+    <div className="flex items-center gap-1 text-sm text-slate-600">
+      <label className="flex items-center gap-1.5">
+        {t('board.sortBy')}
+        <select
+          className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-slate-800"
+          value={sort.key}
+          onChange={(e) => updateSettings({ boardSort: { ...sort, key: e.target.value as BoardSortKey } })}
+        >
+          {BOARD_SORT_KEYS.map((k) => (
+            <option key={k} value={k}>
+              {t(`board.sort.${k}`)}
+            </option>
+          ))}
+        </select>
+      </label>
+      <button
+        className="grid h-8 w-8 place-items-center rounded-lg border border-slate-300 bg-white hover:bg-slate-100"
+        title={t(sort.dir === 'asc' ? 'board.sortAsc' : 'board.sortDesc')}
+        aria-label={t(sort.dir === 'asc' ? 'board.sortAsc' : 'board.sortDesc')}
+        onClick={() => updateSettings({ boardSort: { ...sort, dir: sort.dir === 'asc' ? 'desc' : 'asc' } })}
+      >
+        {sort.dir === 'asc' ? '↑' : '↓'}
+      </button>
+    </div>
+  );
+}
+
 /**
  * Layout shared by both boards: "All" list | day column | right panel.
  * Handles every drop and maps it to a store action.
@@ -42,6 +88,7 @@ export function BoardLayout({ navKey, children }: { navKey: 'matrix' | 'status';
   const { t } = useTranslation();
   const tasks = useLeafTasks();
   const { setTaskDay, setEisenhower, setStatus, setBoardDay } = useAppStore();
+  const removeCard = useRemoveCard();
   const settings = useAppStore((s) => s.settings);
   const now = useNow(60_000);
   const computed = useComputed(now);
@@ -85,7 +132,7 @@ export function BoardLayout({ navKey, children }: { navKey: 'matrix' | 'status';
       (showCompleted || !completed.has(n.id)) &&
       (!notOnDay || n.todayDate !== day) &&
       matches(n, fullFilter, { computed: computed.get(n.id), rootId: rootOf(n.id), hoursPerDay: settings.hoursPerDay, today }),
-  );
+  ).sort((a, b) => compareBoard(a, b, settings.boardSort, settings, today));
   const nFilters = activeCount(filter) + (notOnDay ? 1 : 0) + (showCompleted ? 1 : 0);
   const openTotal = tasks.filter((n) => showCompleted || !completed.has(n.id)).length;
   const people = [...new Set(tasks.map((n) => n.inCharge.trim()))].sort((a, b) => (a === '' ? 1 : b === '' ? -1 : a.localeCompare(b)));
@@ -106,6 +153,10 @@ export function BoardLayout({ navKey, children }: { navKey: 'matrix' | 'status';
     else if (to === 'all') {
       if (from === 'today') setTaskDay(taskId, null);
       if (from.startsWith('q:')) setEisenhower(taskId, null);
+      if (from.startsWith('st:') && from !== 'st:done') {
+        const node = tasks.find((n) => n.id === taskId);
+        if (node) removeCard(node);
+      }
     } else if (to.startsWith('q:')) {
       const [, imp, urg] = to.split(':');
       const node = tasks.find((n) => n.id === taskId);
@@ -122,7 +173,13 @@ export function BoardLayout({ navKey, children }: { navKey: 'matrix' | 'status';
     <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setActive(null)}>
       {/* Fills the viewport; every column scrolls on its own. */}
       <div className="flex h-[calc(100vh-3rem)] flex-col">
-        <ViewTitle navKey={navKey} className="shrink-0" aside={<FocusWarning kind="wip" count={inProgress} limit={WIP_LIMIT} />} />
+        <ViewTitle navKey={navKey} className="shrink-0" aside={
+            <div className="flex flex-wrap items-center gap-3">
+              <FocusWarning kind="wip" count={inProgress} limit={WIP_LIMIT} />
+              <BoardSortControl />
+            </div>
+          }
+        />
         <div className={cx('grid min-h-0 flex-1 gap-4', allCollapsed ? 'grid-cols-[2.75rem_22rem_minmax(0,1fr)]' : 'grid-cols-[14rem_22rem_minmax(0,1fr)]')}>
           {allCollapsed ? (
             <DropZone id="all" className="flex flex-col items-center rounded-xl border border-slate-200 bg-white py-3">

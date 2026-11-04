@@ -27,7 +27,8 @@
     "teamAdd": "Set team name",
     "teamEdit": "Click to edit the team name",
     "teamPlaceholder": "e.g. Product Planning team",
-    "whatsNew": "What's new"
+    "whatsNew": "What's new",
+    "pickDate": "Pick from calendar"
   },
   "nav": {
     "wbs": "WBS",
@@ -95,7 +96,11 @@
     "addGroupIn": "Add a group to \"{{name}}\"",
     "pin": "Pin column (move next to Name and keep it visible)",
     "unpin": "Unpin column",
-    "resizeHint": "Drag to resize · double-click to reset"
+    "resizeHint": "Drag to resize · double-click to reset",
+    "collapseAll": "Collapse all",
+    "expandAll": "Expand all",
+    "collapseAllHint": "Collapse every project and group",
+    "expandAllHint": "Expand every project and group"
   },
   "lt": {
     "days": "{{n}} days",
@@ -126,14 +131,29 @@
     "removeToday": "Remove from Today",
     "collapseAll": "Collapse the All column",
     "expandAll": "Expand the All column",
-    "notOnDay": "Only tasks not on this day yet"
+    "notOnDay": "Only tasks not on this day yet",
+    "sortBy": "Sort by",
+    "sortAsc": "Ascending (click to switch)",
+    "sortDesc": "Descending (click to switch)",
+    "sort": {
+      "priority": "Priority",
+      "rank": "Rank",
+      "dueDate": "Due Date",
+      "planEnd": "Plan End",
+      "progress": "Progress",
+      "name": "Name"
+    },
+    "removeHint": "Take off this week's board (back to Queue, progress kept)",
+    "removed": "\"{{name}}\" is off this week's board — still in All, WBS and Gantt",
+    "moreSubtasks": "{{n}} more"
   },
   "timer": {
     "start": "Start / Cont.",
     "pause": "Pause",
     "complete": "Completed",
     "timeUsing": "Time Using",
-    "running": "Running"
+    "running": "Running",
+    "reopen": "Not done"
   },
   "detail": {
     "checklist": "Check List",
@@ -157,12 +177,15 @@
     "goToday": "Today",
     "extendHint": "Scroll to either edge to extend the timeline",
     "zoomHint": "Click an empty slot or a header cell to zoom in (Year → Quarter → Week → Day)",
-    "createHint": "Day view: click an empty slot in a row to create a task on that day",
-    "created": "Task created for {{date}} — type its name",
     "dueHint": "Due date: {{date}}",
     "planSet": "Plan of \"{{name}}\": {{start}} – {{end}}",
     "planHint": "Click a day to set this task's plan (no plan yet = that day; before the start = new start; otherwise = new end)",
-    "dueDragHint": "Due date: {{date}} — drag left/right to move it, click to open the task"
+    "dueDragHint": "Due date: {{date}} — drag left/right to move it, click to open the task",
+    "focus1": "This week",
+    "focus2": "2 weeks",
+    "focusHint": "Focus: show only this period and the work in it (click again to turn off)",
+    "focusEmpty": "No work in this period",
+    "planFooter": "Day view: click a day in a task's row to set its plan · add tasks with the + on a Project / Group name"
   },
   "list": {
     "search": "Search…",

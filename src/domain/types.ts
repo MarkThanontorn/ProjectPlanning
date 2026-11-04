@@ -58,6 +58,8 @@ export interface WbsNode {
   leadtimeOverrideHrs: number | null;
   /** Manual override of Actual Leadtime in work hours; wins over the timer total. */
   actualLeadtimeOverrideHrs: number | null;
+  /** Monday (ISO) of the week this card was taken off the boards; it can come back the week after. */
+  boardOffWeek: string | null;
   custom: Record<string, string>;
 }
 
@@ -116,6 +118,18 @@ export interface Settings {
   firstUsedAt: string | null;
   /** Backup reminder hidden until this time (ISO datetime). */
   backupSnoozeUntil: string | null;
+  /** Card order on the boards. */
+  boardSort: BoardSort;
+  /** Gantt Name column width in px. */
+  ganttNameWidth: number;
+  /** Gantt focus: show only this many weeks from this Monday (0 = off). */
+  ganttFocusWeeks: 0 | 1 | 2;
+}
+
+export type BoardSortKey = 'priority' | 'rank' | 'dueDate' | 'planEnd' | 'progress' | 'name';
+export interface BoardSort {
+  key: BoardSortKey;
+  dir: 'asc' | 'desc';
 }
 
 export type GanttScale = 'day' | 'week' | 'month' | 'quarter' | 'year';

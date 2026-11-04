@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { todayIso } from '../../domain/calc';
-import { comparePriority, onMatrix, placement } from '../../domain/eisenhower';
+import { compareBoard } from '../../domain/boardSort';
+import { onMatrix, placement } from '../../domain/eisenhower';
 import type { WbsNode } from '../../domain/types';
 import { isThisWeek } from '../../domain/week';
 import { useComputed, useLeafTasks, useNow } from '../../hooks';
@@ -39,7 +40,7 @@ export function EisenhowerBoard() {
 
   const onBoard = tasks
     .filter((n) => onMatrix(n, settings, today, isThisWeek(n, now)))
-    .sort((a, b) => comparePriority(a, b, settings, today));
+    .sort((a, b) => compareBoard(a, b, settings.boardSort, settings, today));
 
   const badges = (n: WbsNode) => {
     const p = placement(n, settings, today);

@@ -45,7 +45,7 @@ export function MasterPlanView() {
   for (let d = range.start; differenceInCalendarDays(d, range.start) < range.days; d = addDays(endOfMonth(d), 1)) {
     const left = (differenceInCalendarDays(d, range.start) / range.days) * 100;
     const width = ((differenceInCalendarDays(endOfMonth(d), d) + 1) / range.days) * 100;
-    months.push({ key: d.toISOString(), left, width, label: format(d, months.length === 0 || d.getMonth() === 0 ? 'MMM yyyy' : 'MMM') });
+    months.push({ key: d.toISOString(), left, width, label: format(d, months.length === 0 || d.getMonth() === 0 ? 'yyyy/MM' : 'MM') });
   }
 
   return (

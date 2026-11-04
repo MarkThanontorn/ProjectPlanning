@@ -15,7 +15,7 @@ export function TaskDetailModal() {
   const { t } = useTranslation();
   const openTaskId = useAppStore((s) => s.openTaskId);
   const node = useAppStore((s) => s.nodes.find((n) => n.id === s.openTaskId));
-  const { openTask, updateNode, setStatus } = useAppStore();
+  const { openTask, updateNode, setStatus, setProgress } = useAppStore();
   const now = useNow(30_000);
   const computed = useComputed(now);
   const [newItem, setNewItem] = useState('');
@@ -99,7 +99,7 @@ export function TaskDetailModal() {
           </div>
           <div className={field}>
             <span className="text-slate-500">{t('col.progress')}</span>
-            <ProgressSlider wide value={node.progress} onChange={(v) => updateNode(node.id, { progress: v })} />
+            <ProgressSlider wide value={node.progress} onChange={(v) => setProgress(node.id, v)} />
           </div>
           <div className={field}>
             <span className="text-slate-500">{t('col.plan')}</span>
