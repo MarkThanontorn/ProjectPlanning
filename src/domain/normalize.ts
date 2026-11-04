@@ -1,4 +1,5 @@
 import { BUILT_IN_COLUMNS } from './factory';
+import { alignTask } from './taskState';
 import { sanitizeColumn, sanitizeMilestone, sanitizeNode, sanitizeSettings, sanitizeToday } from './sanitize';
 import type { AppData, ColumnDef, Milestone, WbsNode } from './types';
 
@@ -14,7 +15,7 @@ export function normalizeData(data: AppData): AppData {
     if (!columns.some((c) => c.id === key)) columns.push({ id: key, builtIn: true, label: '', visible: true, order: ++order });
   }
   return {
-    nodes: list(data.nodes).map(sanitizeNode).filter((n): n is WbsNode => !!n),
+    nodes: list(data.nodes).map(sanitizeNode).filter((n): n is WbsNode => !!n).map(alignTask),
     columns,
     settings: sanitizeSettings(data.settings),
     today: sanitizeToday(data.today),

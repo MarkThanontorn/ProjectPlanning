@@ -10,15 +10,30 @@ Versions before 1.0.0 were reconstructed after the fact from the development his
 (dates are approximate). Only 1.0.0 onward exists in git, so earlier versions can be
 read about here but not checked out.
 
+## [2.4.0] — 2026-11-04
+- Status and Progress always agree, whichever you change: Queue = 0%, In Progress / Reviewing = between,
+  Done = 100%. Saved data is brought into line when the app opens.
+- WBS: Detail and Remark open in a large box for reading and writing, with several lines.
+- Finished tasks show in grey across WBS, Task List and cards.
+- Mark a task as "Not ours" (task popup, WBS, Gantt): it counts as done at 100%, gets a badge, and removing
+  the mark restores it.
+- Filter by In-charge in WBS and Gantt, with the projects and groups above those tasks.
+- Cards: the task name is the title, with its project / group in small grey text below.
+- Cards: ☀ puts a task on the board's day, ☆ makes it a highlight.
+- Cards taken off the board keep their status and progress, and return in the week of their plan or due date.
+- Gantt: click any name to open its details; projects and groups now have a details popup,
+  and tasks have a Remark box.
+- Gantt: click a Project / Group row to add a milestone on that date (group rows add to their project).
+- Gantt: right-click a row to set, move or clear the Due Date.
+- Export and backup file names include the time to the minute.
+- Fixed long names shifting left in WBS and Gantt.
+
 ## [2.3.0] — 2026-11-04
 - Boards: "Sort by" Priority, Rank, Due Date, Plan End, Progress or Name, ascending or descending;
   applies to All, the day column, the status columns and the matrix, and is remembered.
-- Boards: take a card off this week's board with ✕ or by dragging it to All. It goes back to Queue with
-  its progress kept, stays in All / WBS / Gantt, and can return the week after. Dragging it to a status
-  column or starting its timer brings it back.
+- Boards: take a card off this week's board with ✕ or by dragging it to All. It stays in All / WBS / Gantt.
+  Dragging it to a status column or starting its timer brings it back.
 - Cards show the task's Check-List, and items can be ticked on the card.
-- Progress and status move together: 100% completes the task, below 100% reopens it,
-  and above 0% moves a queued task to In Progress.
 - Task popup: a finished task can be reopened with "Not done". Starting the timer on a finished task
   also drops it from 100% to 95%.
 - All dates show as YYYY/MM/DD. Date fields accept typing (2026/11/04, 2026-11-4, 20261104) or the calendar button.

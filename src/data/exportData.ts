@@ -1,4 +1,5 @@
 import { computeAll, flattenTree, leadtimeParts, loggedHours, round2, todayIso } from '../domain/calc';
+import { format } from 'date-fns';
 import { csvSafe } from '../domain/sanitize';
 import type { AppData, WbsNode } from '../domain/types';
 
@@ -113,7 +114,8 @@ function download(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 
-const stamp = () => new Date().toISOString().slice(0, 10);
+/** Local date and time to the minute, so several exports in a day get different names. */
+const stamp = () => format(new Date(), 'yyyy-MM-dd_HHmm');
 
 export function exportJson(data: AppData) {
   download(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }), `project-planning-${stamp()}.json`);

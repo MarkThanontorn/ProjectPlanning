@@ -4,6 +4,7 @@ import { fmtYmd, parseDateText } from './dates';
 import { createNode, defaultSettings } from './factory';
 import { sanitizeNode, sanitizeSettings } from './sanitize';
 import type { BoardSort, Computed, WbsNode } from './types';
+import { alignTask, inChargeRowIds } from './taskState';
 import { focusRowIds, isThisWeek, weekRange } from './week';
 
 const task = (id: string, patch: Partial<WbsNode> = {}): WbsNode => ({ ...createNode('task', 'p', id, 0), id, ...patch });
@@ -43,10 +44,13 @@ describe('board sort', () => {
 describe('removing a card from this week', () => {
   const now = new Date('2026-11-04T10:00:00');
   const monday = weekRange(now).start;
-  it('hides it this week even if in progress, and lets it return next week', () => {
-    const n = task('x', { status: 'in_progress', boardOffWeek: monday });
-    expect(isThisWeek(n, now)).toBe(false);
-    expect(isThisWeek(n, new Date('2026-11-11T10:00:00'))).toBe(true);
+  it('hides it this week even if in progress', () => {
+    expect(isThisWeek(task('x', { status: 'in_progress', boardOffWeek: monday }), now)).toBe(false);
+  });
+  it('a postponed card comes back in the week of its plan, not before', () => {
+    const n = task('x', { status: 'in_progress', boardOffWeek: monday, planStart: '2026-11-23', planEnd: '2026-11-25' });
+    expect(isThisWeek(n, new Date('2026-11-11T10:00:00'))).toBe(false);
+    expect(isThisWeek(n, new Date('2026-11-24T10:00:00'))).toBe(true);
   });
 });
 
@@ -78,4 +82,35 @@ describe('saved data keeps the new settings and fields', () => {
     expect(sanitizeSettings({ boardSort: { key: 'evil' }, ganttFocusWeeks: 9 })).toMatchObject({ boardSort: { key: 'priority', dir: 'asc' }, ganttFocusWeeks: 0 });
   });
   it('node', () => expect(sanitizeNode({ id: 'x', boardOffWeek: '2026-11-02' })?.boardOffWeek).toBe('2026-11-02'));
+});
+
+describe('status and progress agree', () => {
+  it('fixes saved tasks', () => {
+    expect(alignTask(task('a', { status: 'queue', progress: 25 })).status).toBe('in_progress');
+    expect(alignTask(task('a', { status: 'in_progress', progress: 100 })).status).toBe('done');
+    expect(alignTask(task('a', { status: 'done', progress: 50 })).progress).toBe(100);
+    expect(alignTask(task('a', { status: 'reviewing', progress: 0 })).progress).toBe(5);
+  });
+  it('leaves correct tasks, and projects / groups, alone', () => {
+    const ok = task('a', { status: 'in_progress', progress: 25 });
+    expect(alignTask(ok)).toBe(ok);
+    const group = { ...createNode('group', null, 'G', 0), status: 'done' as const, progress: 0 };
+    expect(alignTask(group)).toBe(group);
+  });
+});
+
+describe('in-charge filter', () => {
+  const p = { ...createNode('project', null, 'P', 0), id: 'p' };
+  const g = { ...createNode('group', 'p', 'G', 0), id: 'g' };
+  const mine = task('mine', { parentId: 'g', inCharge: ' Mark ' });
+  const theirs = task('theirs', { parentId: 'p', inCharge: 'Bee' });
+  const nobody = task('nobody', { parentId: 'p' });
+  const nodes = [p, g, mine, theirs, nobody];
+  it('keeps the person\'s tasks and their parents', () => {
+    expect([...inChargeRowIds(nodes, ['Mark'])!].sort()).toEqual(['g', 'mine', 'p']);
+  });
+  it('finds unassigned tasks, without matching empty projects and groups', () => {
+    expect([...inChargeRowIds(nodes, [''])!].sort()).toEqual(['nobody', 'p']);
+  });
+  it('no selection means no filter', () => expect(inChargeRowIds(nodes, [])).toBeNull());
 });

@@ -219,7 +219,7 @@ export function ListView() {
               const c = computed.get(n.id);
               const overdue = isOverdue(n, today);
               return (
-                <tr key={n.id} className="border-b border-slate-100 hover:bg-emerald-50/40">
+                <tr key={n.id} className={cx('border-b border-slate-100 hover:bg-emerald-50/40', n.status === 'done' && '!text-slate-400 [&_input]:!text-slate-400 [&_select]:!text-slate-400 [&_span]:!text-slate-400')}>
                   <td className="px-3 py-2">
                     <button className="text-left hover:underline" onClick={() => openTask(n.id)}>
                       <div className={cx('font-medium', n.status === 'done' && 'text-slate-400 line-through')}>{n.name}</div>

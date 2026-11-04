@@ -32,13 +32,16 @@ import {
   DateInput,
   IconButton,
   InlineText,
+  LongTextCell,
+  NotRelevantBadge,
   LeadtimeText,
   ProgressBar,
   ViewTitle,
 } from '../../components/ui';
 import { ColumnManager } from './ColumnManager';
 import { ResizeHandle } from '../../components/ResizeHandle';
-import { CollapseAllButtons, CompleteToggle, HideCompletedToggle } from '../../components/completion';
+import { CollapseAllButtons, CompleteToggle, HideCompletedToggle, InChargeFilter, NotRelevantToggle } from '../../components/completion';
+import { inChargeRowIds } from '../../domain/taskState';
 import { completedIds } from '../../domain/completion';
 import { DROP_PREFIX, ROW_PREFIX, rowDropFor, type DropPos, type RowDrop } from '../../components/rowDnd';
 import { KIND_ACCENT, KIND_ICON, KIND_ICON_COLOR, KIND_ROW_BG, KIND_ROW_BORDER, KIND_TEXT } from '../../kindStyle';
@@ -202,7 +205,7 @@ function Cell({ col, node, c }: { col: ColumnDef; node: WbsNode; c: Computed }) 
 
   switch (col.id) {
     case 'detail':
-      return <InlineText value={node.detail} onCommit={(v) => set({ detail: v })} className="min-w-[10rem]" />;
+      return <LongTextCell value={node.detail} label={`${t('col.detail')} — ${node.name}`} fill={!!col.width} onCommit={(v) => set({ detail: v })} />;
     case 'planStart':
     case 'planEnd':
     case 'actualStart':
@@ -248,7 +251,7 @@ function Cell({ col, node, c }: { col: ColumnDef; node: WbsNode; c: Computed }) 
     case 'inCharge':
       return <InlineText value={node.inCharge} onCommit={(v) => set({ inCharge: v })} className="min-w-[7rem]" />;
     case 'remark':
-      return <InlineText value={node.remark} onCommit={(v) => set({ remark: v })} className="min-w-[8rem]" />;
+      return <LongTextCell value={node.remark} label={`${t('col.remark')} — ${node.name}`} fill={!!col.width} onCommit={(v) => set({ remark: v })} />;
     case 'dependsOn':
       return <DependsOnCell node={node} />;
     case 'status':
@@ -365,7 +368,10 @@ export function WbsView() {
 
   // "Hide completed": done tasks and completed projects/groups disappear with everything inside.
   const hideCompleted = useAppStore((s) => s.settings.hideCompleted);
-  const hidden = useMemo(() => (hideCompleted ? completedIds(nodes) : new Set<string>()), [hideCompleted, nodes]);
+  const completed = useMemo(() => completedIds(nodes), [nodes]);
+  const inCharge = useAppStore((s) => s.settings.inChargeFilter);
+  const chargeIds = useMemo(() => inChargeRowIds(nodes, inCharge), [nodes, inCharge]);
+  const shown = (n: WbsNode) => !(hideCompleted && completed.has(n.id)) && (!chargeIds || chargeIds.has(n.id));
 
   const renderNode = (node: WbsNode): ReactNode => {
     const c = computed.get(node.id);
@@ -377,7 +383,13 @@ export function WbsView() {
         <DndRow
           node={node}
           drop={rowDrop?.targetId === node.id ? rowDrop.pos : null}
-          className={cx('group border-b border-slate-200/70', KIND_ROW_BG[node.kind], KIND_HOVER[node.kind], KIND_ROW_BORDER[node.kind])}
+          className={cx(
+            'group border-b border-slate-200/70',
+            KIND_ROW_BG[node.kind],
+            KIND_HOVER[node.kind],
+            KIND_ROW_BORDER[node.kind],
+            completed.has(node.id) && '!text-slate-400 [&_input]:!text-slate-400 [&_select]:!text-slate-400 [&_span]:!text-slate-400',
+          )}
         >
           {(handle) => (
           <>
@@ -397,18 +409,19 @@ export function WbsView() {
                 ⠿
               </button>
               {children.length > 0 ? (
-                <button className="w-5 text-slate-500 hover:text-slate-900" onClick={() => toggleCollapsed(node.id)} aria-label="toggle">
+                <button className="w-5 shrink-0 text-slate-500 hover:text-slate-900" onClick={() => toggleCollapsed(node.id)} aria-label="toggle">
                   {node.collapsed ? '▶' : '▼'}
                 </button>
               ) : (
-                <span className={cx('w-5 text-center', KIND_ICON_COLOR[node.kind])}>{KIND_ICON[node.kind]}</span>
+                <span className={cx('w-5 shrink-0 text-center', KIND_ICON_COLOR[node.kind])}>{KIND_ICON[node.kind]}</span>
               )}
               <InlineText
                 value={node.name}
                 autoFocus={focusId === node.id}
                 onCommit={(v) => v.trim() && updateNode(node.id, { name: v.trim() })}
-                className={cx('cursor-pencil', KIND_STYLE[node.kind], node.status === 'done' && 'text-slate-400 line-through')}
+                className={cx('cursor-pencil', KIND_STYLE[node.kind], node.status === 'done' && '!text-slate-400 line-through')}
               />
+              {node.notRelevant && <NotRelevantBadge />}
               <NodeTeamBadge nodeId={node.id} />
               {/* Row actions float over the end of the name on hover, so names use the full width otherwise. */}
               <div className="absolute right-0 top-1/2 hidden -translate-y-1/2 items-center gap-1 rounded-lg bg-emerald-50/95 py-0.5 pl-3 shadow-[-12px_0_12px_-4px_rgb(var(--c-emerald-50)/0.95)] group-focus-within:flex group-hover:flex">
@@ -419,9 +432,8 @@ export function WbsView() {
                   </>
                 )}
                 <CompleteToggle node={node} />
-                {node.kind === 'task' && c.isLeaf && (
-                  <IconButton title={t('wbs.open')} onClick={() => openTask(node.id)}>⤢</IconButton>
-                )}
+                {node.kind === 'task' && c.isLeaf && <NotRelevantToggle node={node} />}
+                <IconButton title={t('wbs.open')} onClick={() => openTask(node.id)}>⤢</IconButton>
                 <IconButton
                   title={t('wbs.delete')}
                   className="hover:bg-rose-100 hover:text-rose-700"
@@ -448,7 +460,7 @@ export function WbsView() {
           </>
           )}
         </DndRow>
-        {!node.collapsed && children.filter((ch) => !hidden.has(ch.id)).map(renderNode)}
+        {!node.collapsed && children.filter(shown).map(renderNode)}
         {canHaveChildren && children.length === 0 && (
           <tr className="border-b border-slate-100">
             <td className="sticky left-0 z-[3] bg-white py-1.5" style={{ ...indent(c.depth + 1), ...widthStyle(nameWidth) }}>
@@ -470,7 +482,8 @@ export function WbsView() {
       <ViewTitle
         navKey="wbs"
         aside={
-          <div className="relative flex gap-2">
+          <div className="relative flex flex-wrap gap-2">
+            <InChargeFilter />
             <CollapseAllButtons />
             <HideCompletedToggle />
             <button
@@ -547,7 +560,7 @@ export function WbsView() {
               </SortableContext>
           </thead>
           <tbody>
-            {(kids.get(null) ?? []).filter((n) => !hidden.has(n.id)).map(renderNode)}
+            {(kids.get(null) ?? []).filter(shown).map(renderNode)}
             <tr>
               <td className="sticky left-0 bg-white px-3 py-2">
                 <AddProjectButton onClick={() => add(null, 'project')}>{t('wbs.newProject')}</AddProjectButton>

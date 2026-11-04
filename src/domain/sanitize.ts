@@ -61,6 +61,9 @@ export function sanitizeNode(raw: unknown): WbsNode | null {
     leadtimeOverrideHrs: numOrNull(raw.leadtimeOverrideHrs),
     actualLeadtimeOverrideHrs: numOrNull(raw.actualLeadtimeOverrideHrs),
     boardOffWeek: isoDate(raw.boardOffWeek),
+    notRelevant: isObj(raw.notRelevant)
+      ? { status: oneOf(raw.notRelevant.status, STATUSES, 'queue'), progress: Math.min(100, Math.max(0, num(raw.notRelevant.progress, 0))) }
+      : null,
     custom,
   };
 }
@@ -109,6 +112,7 @@ export function sanitizeSettings(raw: unknown): Settings {
     },
     ganttNameWidth: Math.min(800, Math.max(160, num(raw.ganttNameWidth, d.ganttNameWidth))),
     ganttFocusWeeks: oneOf(raw.ganttFocusWeeks, [0, 1, 2] as const, 0),
+    inChargeFilter: strings(raw.inChargeFilter),
   };
 }
 

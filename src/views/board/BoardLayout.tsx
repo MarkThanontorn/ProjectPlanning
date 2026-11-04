@@ -138,7 +138,7 @@ export function BoardLayout({ navKey, children }: { navKey: 'matrix' | 'status';
   const people = [...new Set(tasks.map((n) => n.inCharge.trim()))].sort((a, b) => (a === '' ? 1 : b === '' ? -1 : a.localeCompare(b)));
   const projects = nodes.filter((n) => n.parentId === null);
   const setF = (patch: Partial<ListFilter>) => setFilter((f) => ({ ...f, ...patch }));
-  const inProgress = tasks.filter((n) => n.status === 'in_progress').length;
+  const inProgress = tasks.filter((n) => n.status === 'in_progress' && n.boardOffWeek !== weekRange(now).start).length;
 
   const onDragStart = (e: DragStartEvent) => setActive(tasks.find((n) => n.id === e.active.data.current?.taskId) ?? null);
 

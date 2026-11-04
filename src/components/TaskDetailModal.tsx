@@ -5,7 +5,9 @@ import { RANKS, STATUSES, type Rank, type Status } from '../domain/types';
 import { useComputed, useNow } from '../hooks';
 import { useAppStore } from '../store/useAppStore';
 import { TimerButtons, TimeUsing } from './TaskCard';
-import { ActualLeadtimeCell, DateInput, InlineText, PlanLeadtimeCell, ProgressSlider } from './ui';
+import { ActualLeadtimeCell, DateInput, InlineText, LeadtimeText, PlanLeadtimeCell, ProgressBar, ProgressSlider } from './ui';
+import { CompleteToggle, NotRelevantToggle } from './completion';
+import { MilestoneEditor } from './MilestoneEditor';
 import { EisenhowerControls } from './EisenhowerControls';
 import { DependencyEditor } from './DependencyEditor';
 import { TaskHistory, TaskTeamBar } from './team/TaskTeam';
@@ -30,6 +32,8 @@ export function TaskDetailModal() {
   if (!node) return null;
   const c = computed.get(node.id);
   const doneCount = node.checklist.filter((i) => i.done).length;
+  /** Projects and groups get the fields that make sense for them: no timer, check-list or links. */
+  const isTask = node.kind === 'task' && !!c?.isLeaf;
 
   const addItem = () => {
     const text = newItem.trim();
@@ -50,7 +54,10 @@ export function TaskDetailModal() {
       >
         <div className="mb-4 flex items-start gap-3">
           <div className="flex-1">
-            <div className="text-xs text-slate-500">{c?.path.join(' / ')}</div>
+            <div className="text-xs text-slate-500">
+              {!isTask && `${t(`kind.${node.kind}`)} · `}
+              {c?.path.join(' / ')}
+            </div>
             <InlineText
               value={node.name}
               onCommit={(v) => updateNode(node.id, { name: v || node.name })}
@@ -66,7 +73,11 @@ export function TaskDetailModal() {
         <div className="space-y-2">
           <div className={field}>
             <span className="text-slate-500">{t('col.detail')}</span>
-            <InlineText multiline value={node.detail} onCommit={(v) => updateNode(node.id, { detail: v })} />
+            <InlineText multiline value={node.detail} className="!min-h-[8rem]" onCommit={(v) => updateNode(node.id, { detail: v })} />
+          </div>
+          <div className={field}>
+            <span className="text-slate-500">{t('col.remark')}</span>
+            <InlineText multiline value={node.remark} className="!min-h-[5rem]" onCommit={(v) => updateNode(node.id, { remark: v })} />
           </div>
           <div className={field}>
             <span className="text-slate-500">{t('col.rank')}</span>
@@ -89,51 +100,76 @@ export function TaskDetailModal() {
           </div>
           <div className={field}>
             <span className="text-slate-500">{t('col.status')}</span>
-            <select
-              className="w-40 rounded border border-slate-300 px-2 py-1"
-              value={node.status}
-              onChange={(e) => setStatus(node.id, e.target.value as Status)}
-            >
-              {STATUSES.map((s) => <option key={s} value={s}>{t(`status.${s}`)}</option>)}
-            </select>
+            {isTask ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  className="w-40 rounded border border-slate-300 px-2 py-1"
+                  value={node.status}
+                  onChange={(e) => setStatus(node.id, e.target.value as Status)}
+                >
+                  {STATUSES.map((s) => <option key={s} value={s}>{t(`status.${s}`)}</option>)}
+                </select>
+                <NotRelevantToggle node={node} wide />
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <CompleteToggle node={node} />
+                <span>{node.status === 'done' ? t('status.done') : '—'}</span>
+              </div>
+            )}
           </div>
           <div className={field}>
             <span className="text-slate-500">{t('col.progress')}</span>
-            <ProgressSlider wide value={node.progress} onChange={(v) => setProgress(node.id, v)} />
+            {isTask ? <ProgressSlider wide value={node.progress} onChange={(v) => setProgress(node.id, v)} /> : <ProgressBar value={c?.progress ?? 0} />}
           </div>
           <div className={field}>
             <span className="text-slate-500">{t('col.plan')}</span>
             <div className="flex flex-wrap items-center gap-1">
-              <DateInput value={node.planStart} onChange={(v) => updateNode(node.id, { planStart: v })} />→
-              <DateInput value={node.planEnd} onChange={(v) => updateNode(node.id, { planEnd: v })} />
+              <DateInput value={node.planStart} placeholder={c?.planStart} onChange={(v) => updateNode(node.id, { planStart: v })} />→
+              <DateInput value={node.planEnd} placeholder={c?.planEnd} onChange={(v) => updateNode(node.id, { planEnd: v })} />
             </div>
           </div>
           <div className={field}>
             <span className="text-slate-500">{t('col.leadtime')}</span>
             <PlanLeadtimeCell id={node.id} hours={c?.planHours ?? null} overridden={node.leadtimeOverrideHrs != null} />
           </div>
-          <p className="-mt-1 pl-[9rem] text-xs text-slate-400">{t('tip.buffer50')}</p>
+          {isTask && <p className="-mt-1 pl-[9rem] text-xs text-slate-400">{t('tip.buffer50')}</p>}
           <div className={field}>
             <span className="text-slate-500">{t('col.actual')}</span>
             <div className="flex flex-wrap items-center gap-1">
-              <DateInput value={node.actualStart} onChange={(v) => updateNode(node.id, { actualStart: v })} />→
-              <DateInput value={node.actualEnd} onChange={(v) => updateNode(node.id, { actualEnd: v })} />
+              <DateInput value={node.actualStart} placeholder={c?.actualStart} onChange={(v) => updateNode(node.id, { actualStart: v })} />→
+              <DateInput value={node.actualEnd} placeholder={c?.actualEnd} onChange={(v) => updateNode(node.id, { actualEnd: v })} />
             </div>
           </div>
           <div className={field}>
             <span className="text-slate-500">{t('col.actualLeadtime')}</span>
-            <ActualLeadtimeCell id={node.id} hours={c?.actualHours ?? 0} overridden={node.actualLeadtimeOverrideHrs !== null} />
+            {isTask ? (
+              <ActualLeadtimeCell id={node.id} hours={c?.actualHours ?? 0} overridden={node.actualLeadtimeOverrideHrs !== null} />
+            ) : (
+              <LeadtimeText hours={c?.actualHours ?? null} />
+            )}
           </div>
-          <div className={field + ' items-start'}>
-            <span className="pt-1 text-slate-500">Eisenhower</span>
-            <EisenhowerControls node={node} />
-          </div>
-          <div className={field + ' items-start'}>
-            <span className="pt-1 text-slate-500" title={t('deps.hint')}>{t('deps.title')}</span>
-            <DependencyEditor node={node} />
-          </div>
+          {isTask && (
+            <>
+              <div className={field + ' items-start'}>
+                <span className="pt-1 text-slate-500">Eisenhower</span>
+                <EisenhowerControls node={node} />
+              </div>
+              <div className={field + ' items-start'}>
+                <span className="pt-1 text-slate-500" title={t('deps.hint')}>{t('deps.title')}</span>
+                <DependencyEditor node={node} />
+              </div>
+            </>
+          )}
         </div>
+        {node.parentId === null && (
+          <div className="mt-5 rounded-lg border border-slate-200 p-3">
+            <MilestoneEditor projectId={node.id} />
+          </div>
+        )}
 
+        {isTask && (
+        <>
         <div className="mt-5 rounded-lg border border-slate-200 p-3">
           <div className="mb-2 flex items-center justify-between text-sm font-semibold">
             {t('detail.checklist')}
@@ -189,6 +225,8 @@ export function TaskDetailModal() {
           </div>
           <TimerButtons node={node} size="lg" />
         </div>
+        </>
+        )}
         <TaskHistory nodeId={node.id} />
       </div>
     </div>

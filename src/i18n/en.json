@@ -28,7 +28,10 @@
     "teamEdit": "Click to edit the team name",
     "teamPlaceholder": "e.g. Product Planning team",
     "whatsNew": "What's new",
-    "pickDate": "Pick from calendar"
+    "pickDate": "Pick from calendar",
+    "save": "Save",
+    "clickToWrite": "Click to write",
+    "longTextHint": "Ctrl+Enter = save · Esc = cancel"
   },
   "nav": {
     "wbs": "WBS",
@@ -143,9 +146,11 @@
       "progress": "Progress",
       "name": "Name"
     },
-    "removeHint": "Take off this week's board (back to Queue, progress kept)",
-    "removed": "\"{{name}}\" is off this week's board — still in All, WBS and Gantt",
-    "moreSubtasks": "{{n}} more"
+    "removeHint": "Take off this week's board (status and progress stay)",
+    "removed": "\"{{name}}\" is off the board — it returns in the week of its plan or due date; until then it's in All, WBS and Gantt",
+    "moreSubtasks": "{{n}} more",
+    "onDay": "Add to this day",
+    "offDay": "Remove from this day"
   },
   "timer": {
     "start": "Start / Cont.",
@@ -171,7 +176,6 @@
       "quarter": "Quarter",
       "year": "Year"
     },
-    "renameHint": "Click to rename",
     "projectHint": "Click to edit this project's milestones",
     "milestoneHint": "◆ {{name}} · {{date}} — drag left/right to move, click to edit",
     "goToday": "Today",
@@ -185,7 +189,14 @@
     "focus2": "2 weeks",
     "focusHint": "Focus: show only this period and the work in it (click again to turn off)",
     "focusEmpty": "No work in this period",
-    "planFooter": "Day view: click a day in a task's row to set its plan · add tasks with the + on a Project / Group name"
+    "planFooter": "Day view: click a day in a task's row to set its plan · add tasks with the + on a Project / Group name",
+    "msHint": "Click to add a milestone on that date · right-click to set the Due Date",
+    "gridHint": "Click a Project / Group row = add a milestone · right-click any row = set the Due Date",
+    "setDue": "Set Due Date to this date",
+    "moveDue": "Move Due Date to this date",
+    "clearDue": "Clear Due Date",
+    "addMilestone": "Add milestone",
+    "msName": "Milestone name"
   },
   "list": {
     "search": "Search…",
@@ -349,7 +360,11 @@
     "show": "Show completed",
     "hideFilter": "Hide completed (incl. tasks in completed projects/groups)",
     "showFilter": "Show completed tasks",
-    "done": "Completed"
+    "done": "Completed",
+    "notRelevant": "Not ours",
+    "notRelevantBadge": "Not ours",
+    "notRelevantHint": "Mark this task as not ours (counts as done, 100%)",
+    "notRelevantUndo": "Remove \"Not ours\" (back to how it was)"
   },
   "header": {
     "matrix": "Prioritise today by importance and urgency",

@@ -40,9 +40,10 @@ import { blockers, depsOf, wouldCycle } from '../../domain/deps';
 import type { Computed, GanttScale, WbsNode } from '../../domain/types';
 import { useComputed, useFitToViewport, useNow } from '../../hooks';
 import { useAppStore } from '../../store/useAppStore';
-import { cx, InlineText, ViewTitle } from '../../components/ui';
+import { cx, InlineText, NotRelevantBadge, ViewTitle } from '../../components/ui';
 import { ProjectMilestoneModal } from '../../components/MilestoneEditor';
-import { CollapseAllButtons, CompleteToggle, HideCompletedToggle } from '../../components/completion';
+import { CollapseAllButtons, CompleteToggle, HideCompletedToggle, InChargeFilter, NotRelevantToggle } from '../../components/completion';
+import { inChargeRowIds } from '../../domain/taskState';
 import { ResizeHandle } from '../../components/ResizeHandle';
 import { fmtYmd } from '../../domain/dates';
 import { focusRowIds, weekRange } from '../../domain/week';
@@ -209,6 +210,10 @@ export function GanttView() {
   const { updateNode, toggleCollapsed, openTask, updateSettings, addDependency, removeDependency, addNode, deleteNode, moveNodeTo } = useAppStore();
   const milestones = useAppStore((s) => s.milestones);
   const updateMilestone = useAppStore((s) => s.updateMilestone);
+  const addMilestone = useAppStore((s) => s.addMilestone);
+  /** Right-click menu on the grid, and the quick "new milestone" box. */
+  const [cellMenu, setCellMenu] = useState<{ x: number; y: number; node: WbsNode; iso: string } | null>(null);
+  const [msDraft, setMsDraft] = useState<{ x: number; y: number; projectId: string; iso: string } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [projectModal, setProjectModal] = useState<string | null>(null);
   const [msDrag, setMsDrag] = useState<{ id: string; originX: number; date: string; delta: number } | null>(null);
@@ -284,7 +289,9 @@ export function GanttView() {
     () => (focusWeeks ? focusRowIds(nodes, computed, milestones, focusStart, shiftIsoDate(focusStart, focusDays - 1)) : null),
     [focusWeeks, nodes, computed, milestones, focusStart, focusDays],
   );
-  const rows = flattenTree(nodes).filter((n) => !hiddenIds.has(n.id) && (!focusIds || focusIds.has(n.id)));
+  const inCharge = useAppStore((s) => s.settings.inChargeFilter);
+  const chargeIds = useMemo(() => inChargeRowIds(nodes, inCharge), [nodes, inCharge]);
+  const rows = flattenTree(nodes).filter((n) => !hiddenIds.has(n.id) && (!focusIds || focusIds.has(n.id)) && (!chargeIds || chargeIds.has(n.id)));
 
   /** Moving rows (same rules as WBS): drag the ⠿ handle onto another row. */
   const rowSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -376,18 +383,35 @@ export function GanttView() {
     });
   };
 
-  /** Click on the empty part of a row: zoom in, or (day mode, task rows) set the plan. */
+  /** The project a row belongs to (milestones live on projects). */
+  const rootOf = (node: WbsNode) => {
+    let n = node;
+    for (let p = nodes.find((x) => x.id === n.parentId); p; p = nodes.find((x) => x.id === n.parentId)) n = p;
+    return n;
+  };
+
+  /**
+   * Click on the empty part of a row. Project / group rows: add a milestone there.
+   * Task rows: zoom in, or (day mode) set the plan.
+   */
   const onTimelineClick = (e: React.MouseEvent<HTMLDivElement>, node: WbsNode) => {
     if ((e.target as Element).closest('[data-task-id], [data-gantt-control]')) return;
     const iso = dateAtX(e.clientX - e.currentTarget.getBoundingClientRect().left);
-    if (scale !== 'day') zoomInAt(iso);
+    if (node.kind !== 'task') setMsDraft({ x: e.clientX, y: e.clientY, projectId: rootOf(node).id, iso });
+    else if (scale !== 'day') zoomInAt(iso);
     else if (plannable(node)) setPlanAt(node, iso);
+  };
+
+  /** Right-click on a row: menu for that day (set / clear the Due Date, add a milestone). */
+  const onTimelineMenu = (e: React.MouseEvent<HTMLDivElement>, node: WbsNode) => {
+    e.preventDefault();
+    setCellMenu({ x: e.clientX, y: e.clientY, node, iso: dateAtX(e.clientX - e.currentTarget.getBoundingClientRect().left) });
   };
 
   /** Day mode: ghost "+" cell under the pointer. */
   const [hoverCell, setHoverCell] = useState<{ id: string; idx: number } | null>(null);
   const onTimelineMove = (e: React.MouseEvent<HTMLDivElement>, node: WbsNode) => {
-    if (scale !== 'day' || !plannable(node)) return;
+    if (scale !== 'day' || (node.kind === 'task' && !plannable(node))) return;
     const overControl = (e.target as Element).closest('[data-task-id], [data-gantt-control]');
     const idx = Math.floor((e.clientX - e.currentTarget.getBoundingClientRect().left) / dayW);
     setHoverCell((h) => (overControl ? null : h?.id === node.id && h.idx === idx ? h : { id: node.id, idx }));
@@ -583,12 +607,14 @@ export function GanttView() {
         data-task-id={node.id}
         className={cx(
           'absolute top-1/2 z-[6] h-6 -translate-y-1/2 cursor-grab touch-none overflow-hidden rounded border-2 shadow-sm active:cursor-grabbing',
-          node.status === 'done' ? 'bg-emerald-200' : late ? 'bg-rose-100' : 'bg-sky-200',
+          node.notRelevant ? 'bg-slate-200' : node.status === 'done' ? 'bg-emerald-200' : late ? 'bg-rose-100' : 'bg-sky-200',
           dragging
             ? 'border-emerald-600 ring-2 ring-emerald-400'
             : linkTarget
               ? 'border-sky-600 ring-2 ring-sky-400'
-              : node.status === 'done'
+              : node.notRelevant
+                ? 'border-slate-400'
+                : node.status === 'done'
                 ? 'border-emerald-500'
                 : late
                   ? 'border-rose-500'
@@ -601,7 +627,7 @@ export function GanttView() {
         onPointerUp={endDrag}
         onPointerCancel={() => setDrag(null)}
       >
-        <div className="h-full bg-emerald-500" style={{ width: `${node.progress}%` }} />
+        {!node.notRelevant && <div className="h-full bg-emerald-500" style={{ width: `${node.progress}%` }} />}
         <span className="pointer-events-none absolute inset-0 flex items-center px-2 text-[11px] font-semibold text-slate-900">
           {width > 170 ? text : width > 90 ? shortText : ''}
         </span>
@@ -675,6 +701,7 @@ export function GanttView() {
             >
               ⊕ {t('wbs.newProject')}
             </button>
+            <InChargeFilter />
             <CollapseAllButtons />
             <HideCompletedToggle />
             <button className="shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-1 hover:bg-slate-100" onClick={scrollToToday}>
@@ -790,11 +817,11 @@ export function GanttView() {
                       ⠿
                     </button>
                     {hasKids ? (
-                      <button className="w-5 text-slate-500 hover:text-slate-900" onClick={() => toggleCollapsed(node.id)} aria-label="toggle">
+                      <button className="w-5 shrink-0 text-slate-500 hover:text-slate-900" onClick={() => toggleCollapsed(node.id)} aria-label="toggle">
                         {node.collapsed ? '▶' : '▼'}
                       </button>
                     ) : (
-                      <span className={cx('w-5 text-center', KIND_ICON_COLOR[node.kind])}>{KIND_ICON[node.kind]}</span>
+                      <span className={cx('w-5 shrink-0 text-center', KIND_ICON_COLOR[node.kind])}>{KIND_ICON[node.kind]}</span>
                     )}
                     {editingId === node.id ? (
                       <InlineText
@@ -807,16 +834,17 @@ export function GanttView() {
                     ) : (
                       <button
                         className={cx(
-                          'cursor-pencil min-w-0 truncate text-left hover:underline',
+                          'min-w-0 truncate text-left hover:underline',
                           KIND_TEXT[node.kind],
                           node.status === 'done' && '!text-slate-400 line-through',
                         )}
-                        title={t('gantt.renameHint')}
-                        onClick={() => setEditingId(node.id)}
+                        title={t('wbs.open')}
+                        onClick={() => openTask(node.id)}
                       >
                         {node.name}
                       </button>
                     )}
+                    {node.notRelevant && <NotRelevantBadge />}
                     {blocked && <span title={t('deps.blockedBy', { names: blockers(node, nodes).map((b) => b.name).join(', ') })}>🔒</span>}
                     {editingId !== node.id && node.kind !== 'task' && (
                       <button
@@ -830,11 +858,10 @@ export function GanttView() {
                     )}
                     {editingId !== node.id && (
                       <div className="ml-auto mr-1 hidden shrink-0 items-center gap-0.5 group-hover/row:flex">
-                        {node.kind === 'task' && c.isLeaf && (
-                          <button className="grid h-6 w-6 place-items-center rounded text-slate-500 hover:bg-slate-200" title={t('wbs.open')} onClick={() => openTask(node.id)}>
-                            ⤢
-                          </button>
-                        )}
+                        {node.kind === 'task' && c.isLeaf && <NotRelevantToggle node={node} />}
+                        <button className="grid h-6 w-6 place-items-center rounded text-slate-500 hover:bg-slate-200" title={t('wbs.open')} onClick={() => openTask(node.id)}>
+                          ⤢
+                        </button>
                         {node.parentId === null && (
                           <button className="grid h-6 w-6 place-items-center rounded text-slate-500 hover:bg-slate-200" title={t('gantt.projectHint')} onClick={() => setProjectModal(node.id)}>
                             ◆
@@ -870,18 +897,21 @@ export function GanttView() {
                     )}
                   </div>
                   <div
-                    className={cx('relative', focusWeeks > 0 && 'overflow-hidden', scale !== 'day' ? 'cursor-zoom-in' : plannable(node) && 'cursor-cell')}
+                    className={cx('relative', focusWeeks > 0 && 'overflow-hidden', node.kind !== 'task' || (scale === 'day' && plannable(node)) ? 'cursor-cell' : scale !== 'day' && 'cursor-zoom-in')}
                     style={{ width: timelineW }}
-                    title={scale !== 'day' ? t('gantt.zoomHint') : plannable(node) ? t('gantt.planHint') : undefined}
+                    title={node.kind !== 'task' ? t('gantt.msHint') : scale !== 'day' ? t('gantt.zoomHint') : plannable(node) ? t('gantt.planHint') : undefined}
                     onClick={(e) => onTimelineClick(e, node)}
+                    onContextMenu={(e) => onTimelineMenu(e, node)}
                     onMouseMove={(e) => onTimelineMove(e, node)}
                     onMouseLeave={() => setHoverCell(null)}
                   >
                     {scale === 'day' && hoverCell?.id === node.id && !drag && !link && (
                       <div
-                        className="pointer-events-none absolute inset-y-1 z-[5] rounded border-2 border-dashed border-sky-500 bg-sky-100/60"
+                        className="pointer-events-none absolute inset-y-1 z-[5] grid place-items-center rounded border-2 border-dashed border-sky-500 bg-sky-100/60 text-xs text-sky-700"
                         style={{ left: hoverCell.idx * dayW, width: dayW }}
-                      />
+                      >
+                        {node.kind !== 'task' && '◆'}
+                      </div>
                     )}
                     {renderBar(node, c, rowIdx)}
                     {node.dueDate &&
@@ -1040,10 +1070,79 @@ export function GanttView() {
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
         <span className="text-slate-500">🔍 {scale === 'day' ? t('gantt.planFooter') : t('gantt.zoomHint')}</span>
+        <span className="text-slate-500">🖱 {t('gantt.gridHint')}</span>
         <span className="text-slate-500">🔗 {t('deps.ganttHint')}</span>
         {arrows.some((a) => a.conflict) && <span className="text-rose-600">⚠ {t('deps.ganttConflict')}</span>}
       </div>
       {projectModal && <ProjectMilestoneModal projectId={projectModal} onClose={() => setProjectModal(null)} />}
+      {cellMenu && (
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setCellMenu(null)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setCellMenu(null);
+            }}
+          />
+          <div
+            role="menu"
+            className="fixed z-50 w-60 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 text-sm shadow-xl"
+            style={{ left: Math.min(cellMenu.x, window.innerWidth - 256), top: Math.min(cellMenu.y, window.innerHeight - 150) }}
+          >
+            <div className="truncate px-3 py-1 text-xs text-slate-500">
+              {cellMenu.node.name} · {fmtYmd(cellMenu.iso)}
+            </div>
+            <button
+              role="menuitem"
+              className="block w-full px-3 py-1.5 text-left hover:bg-slate-100"
+              onClick={() => {
+                updateNode(cellMenu.node.id, { dueDate: cellMenu.iso });
+                setCellMenu(null);
+              }}
+            >
+              ⚑ {t(cellMenu.node.dueDate ? 'gantt.moveDue' : 'gantt.setDue')}
+            </button>
+            {cellMenu.node.dueDate && (
+              <button
+                role="menuitem"
+                className="block w-full px-3 py-1.5 text-left hover:bg-slate-100"
+                onClick={() => {
+                  updateNode(cellMenu.node.id, { dueDate: null });
+                  setCellMenu(null);
+                }}
+              >
+                ✕ {t('gantt.clearDue')} ({fmtYmd(cellMenu.node.dueDate)})
+              </button>
+            )}
+            {cellMenu.node.kind !== 'task' && (
+              <button
+                role="menuitem"
+                className="block w-full px-3 py-1.5 text-left hover:bg-slate-100"
+                onClick={() => {
+                  setMsDraft({ x: cellMenu.x, y: cellMenu.y, projectId: rootOf(cellMenu.node).id, iso: cellMenu.iso });
+                  setCellMenu(null);
+                }}
+              >
+                ◆ {t('gantt.addMilestone')}
+              </button>
+            )}
+          </div>
+        </>
+      )}
+      {msDraft && (
+        <QuickMilestone
+          x={msDraft.x}
+          y={msDraft.y}
+          date={msDraft.iso}
+          project={nodes.find((n) => n.id === msDraft.projectId)?.name ?? ''}
+          onAdd={(name) => {
+            addMilestone(msDraft.projectId, name, msDraft.iso);
+            setMsDraft(null);
+          }}
+          onClose={() => setMsDraft(null)}
+        />
+      )}
       {notice && (
         <div
           className={cx(
@@ -1097,5 +1196,59 @@ function GanttDndRow({
     >
       {children({ listeners: drag.listeners, attributes: drag.attributes, setActivatorNodeRef: drag.setActivatorNodeRef })}
     </div>
+  );
+}
+
+/** Small box at the click position: name the new milestone and press Enter. */
+function QuickMilestone({
+  x,
+  y,
+  date,
+  project,
+  onAdd,
+  onClose,
+}: {
+  x: number;
+  y: number;
+  date: string;
+  project: string;
+  onAdd: (name: string) => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const [name, setName] = useState('');
+  const add = () => name.trim() && onAdd(name.trim());
+  return (
+    <>
+      <div className="fixed inset-0 z-40" onClick={onClose} />
+      <div
+        role="dialog"
+        className="fixed z-50 w-72 rounded-lg border border-slate-200 bg-white p-3 text-sm shadow-xl"
+        style={{ left: Math.min(x, window.innerWidth - 304), top: Math.min(y + 8, window.innerHeight - 130) }}
+      >
+        <div className="mb-1.5 truncate text-xs text-slate-500">
+          ◆ {t('gantt.addMilestone')} · {project} · {fmtYmd(date)}
+        </div>
+        <input
+          autoFocus
+          className="w-full rounded border border-slate-300 bg-white px-2 py-1 outline-none focus:border-emerald-500"
+          placeholder={t('gantt.msName')}
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') add();
+            if (e.key === 'Escape') onClose();
+          }}
+        />
+        <div className="mt-2 flex justify-end gap-2">
+          <button className="rounded px-2 py-1 hover:bg-slate-100" onClick={onClose}>
+            {t('team.cancel')}
+          </button>
+          <button className="rounded bg-emerald-600 px-3 py-1 font-medium text-white hover:bg-emerald-700 disabled:opacity-40" disabled={!name.trim()} onClick={add}>
+            {t('app.save')}
+          </button>
+        </div>
+      </div>
+    </>
   );
 }

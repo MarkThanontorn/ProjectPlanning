@@ -58,8 +58,10 @@ export interface WbsNode {
   leadtimeOverrideHrs: number | null;
   /** Manual override of Actual Leadtime in work hours; wins over the timer total. */
   actualLeadtimeOverrideHrs: number | null;
-  /** Monday (ISO) of the week this card was taken off the boards; it can come back the week after. */
+  /** Monday (ISO) of the week this card was taken off the boards. */
   boardOffWeek: string | null;
+  /** Marked "not ours": counted as done at 100%. Keeps what to restore if the mark is removed. */
+  notRelevant: { status: Status; progress: number } | null;
   custom: Record<string, string>;
 }
 
@@ -124,6 +126,8 @@ export interface Settings {
   ganttNameWidth: number;
   /** Gantt focus: show only this many weeks from this Monday (0 = off). */
   ganttFocusWeeks: 0 | 1 | 2;
+  /** WBS / Gantt: show only these people's tasks ('' = nobody assigned; empty list = everyone). */
+  inChargeFilter: string[];
 }
 
 export type BoardSortKey = 'priority' | 'rank' | 'dueDate' | 'planEnd' | 'progress' | 'name';

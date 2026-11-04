@@ -7,6 +7,7 @@ import type { AppData, ColumnDef, Eisenhower, Milestone, NodeKind, Routine, Sett
 export const MAX_HIGHLIGHTS = 3;
 import { DexieRepository } from '../data/dexieRepo';
 import { normalizeData } from '../domain/normalize';
+import { STARTED_PROGRESS } from '../domain/taskState';
 import { stripDemo } from '../domain/demo';
 import { blockers, wouldCycle } from '../domain/deps';
 import type { Repository } from '../data/repository';
@@ -51,10 +52,12 @@ interface AppState extends AppData {
   pauseTimer(id: string): void;
   completeTask(id: string): void;
   setStatus(id: string, status: Status): void;
-  /** Progress and status move together: 100% completes the task, lower reopens it. */
+  /** Progress and status move together: 0% = Queue, in between = In Progress, 100% = Done. */
   setProgress(id: string, progress: number): void;
-  /** Takes a card off this week's boards: back to Queue, progress kept, until the week after. */
+  /** Takes a card off this week's boards; status and progress stay as they are. */
   removeFromBoard(id: string, weekStart: string): void;
+  /** Marks a task as not ours (done at 100%), or removes the mark and restores it. */
+  setNotRelevant(id: string, on: boolean): void;
   /** Mark any node complete (struck through) or reopen it. Tasks use the normal complete flow. */
   setCompleted(id: string, done: boolean): void;
   /** Puts a task on the given day's list (null removes it). */
@@ -85,6 +88,9 @@ interface AppState extends AppData {
 }
 
 let initPromise: Promise<void> | undefined;
+
+/** Progress of a task that is (re)started: never 0%, and no longer 100%. */
+const reopenedProgress = (n: WbsNode) => (n.progress >= 100 ? 95 : n.progress === 0 ? STARTED_PROGRESS : n.progress);
 
 /** Called after every local change with the state before and after (team mode records it). */
 type CommitListener = (prev: AppData, next: AppData) => void;
@@ -267,7 +273,7 @@ export const useAppStore = create<AppState>((set, get) => {
       // One running timer at a time: starting a task pauses the others.
       const now = new Date();
       commit((s) => ({
-        nodes: s.nodes.map((n) => (n.id === id ? { ...startTimer(n, now), boardOffWeek: null, progress: n.status === 'done' && n.progress === 100 ? 95 : n.progress } : isRunning(n) ? pauseTimer(n, now) : n)),
+        nodes: s.nodes.map((n) => (n.id === id ? { ...startTimer(n, now), boardOffWeek: null, notRelevant: null, progress: reopenedProgress(n) } : isRunning(n) ? pauseTimer(n, now) : n)),
       }));
     },
     pauseTimer(id) {
@@ -285,8 +291,9 @@ export const useAppStore = create<AppState>((set, get) => {
           ...base,
           status,
           actualEnd: n.status === 'done' ? null : base.actualEnd,
-          progress: n.status === 'done' && n.progress === 100 ? 95 : base.progress,
+          progress: status === 'queue' ? 0 : reopenedProgress(n),
           boardOffWeek: null,
+          notRelevant: null,
         };
       });
     },
@@ -294,15 +301,24 @@ export const useAppStore = create<AppState>((set, get) => {
     setProgress(id, progress) {
       if (progress >= 100) return get().completeTask(id);
       mapNode(id, (n) => ({
-        ...n,
+        ...(progress === 0 ? pauseTimer(n) : n),
         progress,
-        status: n.status === 'done' || (n.status === 'queue' && progress > 0) ? 'in_progress' : n.status,
+        status: progress === 0 ? 'queue' : n.status === 'done' || n.status === 'queue' ? 'in_progress' : n.status,
         actualEnd: n.status === 'done' ? null : n.actualEnd,
+        notRelevant: null,
       }));
     },
 
     removeFromBoard(id, weekStart) {
-      mapNode(id, (n) => ({ ...pauseTimer(n), status: 'queue', boardOffWeek: weekStart }));
+      mapNode(id, (n) => ({ ...pauseTimer(n), boardOffWeek: weekStart }));
+    },
+
+    setNotRelevant(id, on) {
+      mapNode(id, (n) =>
+        on
+          ? { ...pauseTimer(n), notRelevant: { status: n.status, progress: n.progress }, status: 'done', progress: 100 }
+          : { ...n, status: n.notRelevant?.status ?? 'queue', progress: n.notRelevant?.progress ?? 0, notRelevant: null },
+      );
     },
 
     setCompleted(id, done) {

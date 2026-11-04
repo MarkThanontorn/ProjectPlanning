@@ -16,7 +16,8 @@ export function isThisWeek(node: WbsNode, now: Date = new Date()): boolean {
   // Taken off the boards by hand: stays off for the rest of that week.
   if (node.boardOffWeek === start) return false;
   if (node.todayDate === toIsoDate(now)) return true;
-  if (node.status === 'in_progress' || node.status === 'reviewing') return true;
+  // A card taken off by hand no longer stays just for being open: its plan or due date brings it back.
+  if (!node.boardOffWeek && (node.status === 'in_progress' || node.status === 'reviewing')) return true;
   if (node.dueDate && node.dueDate >= start && node.dueDate <= end) return true;
   if (node.planStart && node.planEnd && node.planStart <= end && node.planEnd >= start) return true;
   if (node.actualEnd && node.actualEnd >= start && node.actualEnd <= end) return true;

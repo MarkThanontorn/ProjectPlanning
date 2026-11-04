@@ -4,10 +4,72 @@ import type { Computed, WbsNode } from '../domain/types';
 import { useNow } from '../hooks';
 import { useAppStore } from '../store/useAppStore';
 import { blockers } from '../domain/deps';
-import { cx, fmtDate, ProgressBar, RankBadge } from './ui';
+import { todayIso } from '../domain/calc';
+import { MAX_HIGHLIGHTS } from '../store/useAppStore';
+import { cx, fmtDate, NotRelevantBadge, ProgressBar, RankBadge } from './ui';
 
 export const taskTitle = (node: WbsNode, c: Computed | undefined) =>
   c && c.path.length ? `${node.name} (${c.path.join(' / ')})` : node.name;
+
+/** Task name, with its project / group below in small grey text so the two don't read as one title. */
+function CardTitle({ node, computed, className }: { node: WbsNode; computed: Computed | undefined; className?: string }) {
+  const done = node.status === 'done';
+  const path = computed?.path.join(' / ');
+  return (
+    <div className={cx('min-w-0', className)}>
+      <div className={cx('break-words text-sm font-semibold', done ? 'text-slate-400 line-through' : 'text-slate-900')}>
+        {node.name}
+        {node.notRelevant && <NotRelevantBadge className="ml-1 inline-block align-middle" />}
+      </div>
+      {path && (
+        <div className="truncate text-[11px] leading-tight text-slate-400" title={path}>
+          {path}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** ☀ / ★ on a card: put the task on the board's day, or make it a highlight of that day. */
+function DayButtons({ node }: { node: WbsNode }) {
+  const { t } = useTranslation();
+  const day = useAppStore((s) => s.boardDay) ?? todayIso();
+  const highlights = useAppStore((s) => s.today.highlights[day]) ?? [];
+  const setTaskDay = useAppStore((s) => s.setTaskDay);
+  const toggleHighlight = useAppStore((s) => s.toggleHighlight);
+  if (node.status === 'done') return null;
+  const onDay = node.todayDate === day;
+  const starred = highlights.includes(node.id);
+  const full = !starred && highlights.length >= MAX_HIGHLIGHTS;
+  const cls = 'grid h-5 w-5 place-items-center rounded text-sm leading-none hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40';
+  const stop = (fn: () => void) => (e: React.MouseEvent) => {
+    e.stopPropagation();
+    fn();
+  };
+  return (
+    <span className="ml-auto flex shrink-0 gap-0.5" onPointerDown={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        className={cx(cls, onDay ? 'text-emerald-600' : 'text-slate-300 hover:text-emerald-600')}
+        title={t(onDay ? 'board.offDay' : 'board.onDay')}
+        aria-label={t(onDay ? 'board.offDay' : 'board.onDay')}
+        onClick={stop(() => setTaskDay(node.id, onDay ? null : day))}
+      >
+        ☀
+      </button>
+      <button
+        type="button"
+        className={cx(cls, starred ? 'text-amber-500' : 'text-slate-300 hover:text-amber-500')}
+        title={t(starred ? 'today.unstar' : 'today.star')}
+        aria-label={t(starred ? 'today.unstar' : 'today.star')}
+        disabled={full}
+        onClick={stop(() => toggleHighlight(node.id, day))}
+      >
+        {starred ? '★' : '☆'}
+      </button>
+    </span>
+  );
+}
 
 /** Open predecessors of a task (empty when it can start). */
 export function useBlockers(node: WbsNode) {
@@ -126,11 +188,9 @@ export function TaskCard({ node, computed }: { node: WbsNode; computed: Computed
       )}
       onClick={() => openTask(node.id)}
     >
-      <div className={cx('mb-2 text-sm font-semibold text-slate-900', node.status === 'done' && 'line-through text-slate-400')}>
-        {taskTitle(node, computed)}
-      </div>
+      <CardTitle node={node} computed={computed} className="mb-2 pr-14" />
       <BlockedNote node={node} />
-      <dl className="mb-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+      <dl className={cx('mb-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs', node.status === 'done' && '[&_dd]:!text-slate-400')}>
         <dt className="text-slate-500">{t('col.detail')}</dt>
         <dd className="line-clamp-2 text-slate-800">{node.detail || '—'}</dd>
         <dt className="text-slate-500">{t('col.rank')}</dt>
@@ -189,15 +249,16 @@ export function MiniCard({
           ✕
         </button>
       )}
-      <div className={cx('flex items-start gap-2', node.status === 'done' && 'text-slate-400 line-through')}>
+      <div className="flex items-start gap-2">
         {running && <span className="mt-1.5 h-2 w-2 shrink-0 animate-pulse rounded-full bg-rose-500" />}
-        <span className="flex-1">{taskTitle(node, computed)}</span>
+        <CardTitle node={node} computed={computed} className="flex-1" />
         <RankBadge rank={node.rank} />
       </div>
       <BlockedNote node={node} />
-      <div className="mt-1 flex flex-wrap gap-x-2 text-xs text-slate-500">
+      <div className="mt-1 flex items-center gap-x-2 text-xs text-slate-500">
         <span>{fmtDate(node.dueDate)}</span>
-        {node.inCharge && <span>· {node.inCharge}</span>}
+        {node.inCharge && <span className="min-w-0 truncate">· {node.inCharge}</span>}
+        <DayButtons node={node} />
       </div>
       <ProgressBar value={node.progress} className="mt-1.5" />
       <Subtasks node={node} />

@@ -30,6 +30,7 @@ export function createNode(kind: NodeKind, parentId: string | null, name: string
     leadtimeOverrideHrs: null,
     actualLeadtimeOverrideHrs: null,
     boardOffWeek: null,
+    notRelevant: null,
     custom: {},
   };
 }
@@ -78,6 +79,7 @@ export const defaultSettings = (): Settings => ({
   boardSort: { key: 'priority', dir: 'asc' },
   ganttNameWidth: 256,
   ganttFocusWeeks: 0,
+  inChargeFilter: [],
 });
 
 export const defaultToday = (): TodayData => ({ highlights: {}, routines: [], routineDone: {} });

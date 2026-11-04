@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { leadtimeParts, round2 } from '../domain/calc';
 import { fmtYmd, parseDateText } from '../domain/dates';
@@ -67,6 +68,82 @@ export function InlineText({
       }}
     />
   );
+}
+
+/**
+ * Long text in a table cell: a one-line preview that opens a large box to read and edit.
+ * Clicking outside saves, Esc cancels.
+ */
+export function LongTextCell({ value, label, onCommit, fill }: { value: string; label: string; onCommit: (v: string) => void; fill?: boolean }) {
+  const { t } = useTranslation();
+  const [box, setBox] = useState<{ left: number; top: number; width: number } | null>(null);
+  const [draft, setDraft] = useState(value);
+  const save = () => {
+    if (draft !== value) onCommit(draft);
+    setBox(null);
+  };
+  return (
+    <>
+      <button
+        type="button"
+        className={cx('block max-w-full truncate rounded px-1.5 py-1 text-left hover:bg-slate-100', !value && 'text-slate-400', fill ? 'w-full' : 'w-56')}
+        title={value || t('app.clickToWrite')}
+        onClick={(e) => {
+          const r = e.currentTarget.getBoundingClientRect();
+          const width = Math.min(520, window.innerWidth - 32);
+          const height = 340;
+          setDraft(value);
+          setBox({
+            width,
+            left: Math.max(16, Math.min(r.left, window.innerWidth - width - 16)),
+            top: Math.max(16, Math.min(r.bottom + 4, window.innerHeight - height - 16)),
+          });
+        }}
+      >
+        {value.replace(/\s*\n\s*/g, ' · ') || '—'}
+      </button>
+      {box &&
+        createPortal(
+          <div className="fixed inset-0 z-[55]" onMouseDown={save}>
+            <div
+              role="dialog"
+              aria-label={label}
+              className="fixed rounded-xl border border-slate-300 bg-white p-3 shadow-2xl"
+              style={{ left: box.left, top: box.top, width: box.width }}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <div className="mb-1.5 text-sm font-semibold text-slate-700">{label}</div>
+              <textarea
+                autoFocus
+                className="h-60 w-full resize-y rounded-lg border border-slate-300 bg-white p-2 text-sm leading-relaxed text-slate-800 outline-none focus:border-emerald-500"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Escape') setBox(null);
+                  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) save();
+                }}
+              />
+              <div className="mt-2 flex items-center justify-end gap-2 text-sm">
+                <span className="mr-auto text-xs text-slate-400">{t('app.longTextHint')}</span>
+                <button type="button" className="rounded-lg px-3 py-1 hover:bg-slate-100" onClick={() => setBox(null)}>
+                  {t('team.cancel')}
+                </button>
+                <button type="button" className="rounded-lg bg-emerald-600 px-3 py-1 font-medium text-white hover:bg-emerald-700" onClick={save}>
+                  {t('app.save')}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}
+
+/** Shown next to a task marked as not ours. */
+export function NotRelevantBadge({ className }: { className?: string }) {
+  const { t } = useTranslation();
+  return <span className={cx('shrink-0 rounded bg-slate-200 px-1 text-[10px] font-medium text-slate-600', className)}>{t('complete.notRelevantBadge')}</span>;
 }
 
 /**
