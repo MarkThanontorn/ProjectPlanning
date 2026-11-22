@@ -11,6 +11,7 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core';
 import { todayIso } from '../../domain/calc';
+import { knownPeople, splitPeople } from '../../domain/people';
 import { BOARD_SORT_KEYS, compareBoard } from '../../domain/boardSort';
 import { toast } from '../../team/teamStore';
 import { weekRange } from '../../domain/week';
@@ -135,7 +136,7 @@ export function BoardLayout({ navKey, children }: { navKey: 'matrix' | 'status';
   ).sort((a, b) => compareBoard(a, b, settings.boardSort, settings, today));
   const nFilters = activeCount(filter) + (notOnDay ? 1 : 0) + (showCompleted ? 1 : 0);
   const openTotal = tasks.filter((n) => showCompleted || !completed.has(n.id)).length;
-  const people = [...new Set(tasks.map((n) => n.inCharge.trim()))].sort((a, b) => (a === '' ? 1 : b === '' ? -1 : a.localeCompare(b)));
+  const people = [...knownPeople(tasks), ...(tasks.some((n) => splitPeople(n.inCharge).length === 0) ? [''] : [])];
   const projects = nodes.filter((n) => n.parentId === null);
   const setF = (patch: Partial<ListFilter>) => setFilter((f) => ({ ...f, ...patch }));
   const inProgress = tasks.filter((n) => n.status === 'in_progress' && n.boardOffWeek !== weekRange(now).start).length;

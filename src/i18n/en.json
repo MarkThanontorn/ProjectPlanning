@@ -200,7 +200,10 @@
     "moveDue": "Move Due Date to this date",
     "clearDue": "Clear Due Date",
     "addMilestone": "Add milestone",
-    "msName": "Milestone name"
+    "msName": "Milestone name",
+    "freeze": "Keep this row at the top",
+    "unfreeze": "Unfreeze this row",
+    "frozen": "Kept at the top"
   },
   "list": {
     "search": "Search…",
@@ -503,5 +506,18 @@
     "updateNow": "Update now",
     "install": "Install as app",
     "installHint": "Opens in its own window without the address bar, with an icon in the Start menu / taskbar, and works offline (same data as in the browser)"
+  },
+  "people": {
+    "edit": "Click to pick / add people",
+    "placeholder": "Type a name or pick one",
+    "hint": "Enter = add · Enter on empty = save"
+  },
+  "filter": {
+    "dueRange": "Due Date (or Plan End when none)",
+    "thisWeek": "This week",
+    "thisMonth": "This month",
+    "next30": "Next 30 days",
+    "recent": "Around now (−30 to +60 days)",
+    "undated": "Include tasks without a date"
   }
 }

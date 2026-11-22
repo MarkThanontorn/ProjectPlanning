@@ -10,6 +10,17 @@ Versions before 1.0.0 were reconstructed after the fact from the development his
 (dates are approximate). Only 1.0.0 onward exists in git, so earlier versions can be
 read about here but not checked out.
 
+## [2.6.0] — 2026-11-23
+- Status and Progress: 95% now means Reviewing (0% Queue · 5–75% In Progress · 95% Reviewing · 100% Done),
+  both ways. "Not done" on a finished task goes back to Reviewing.
+- In-charge holds several people: pick from names used before or type a new one, Enter adds a person.
+  Names written as "A/B" or "A, B" are read as separate people; the In-charge filters match any of them.
+- WBS / Gantt filter now also has a Due Date range (Plan End when there is no Due Date), with quick
+  ranges (this week, this month, next 30 days, around now) and an option for tasks without any date.
+- Gantt: freeze rows (📌 on a row's name) to keep them at the top while scrolling, e.g. a project
+  with its milestones above its tasks.
+- Gantt: dragging a row no longer scrolls the dates sideways.
+
 ## [2.5.0] — 2026-11-22
 - Gantt Focus opens the projects and groups that hold work planned in that period.
 - The quick-action bar appears only while the mouse is on the name, and has ☀ (day) and ☆ (highlight)

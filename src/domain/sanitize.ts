@@ -114,6 +114,10 @@ export function sanitizeSettings(raw: unknown): Settings {
     ganttNameWidth: Math.min(800, Math.max(160, num(raw.ganttNameWidth, d.ganttNameWidth))),
     ganttFocusWeeks: oneOf(raw.ganttFocusWeeks, [0, 1, 2] as const, 0),
     inChargeFilter: strings(raw.inChargeFilter),
+    dueFilter: isObj(raw.dueFilter)
+      ? { from: isoDate(raw.dueFilter.from), to: isoDate(raw.dueFilter.to), includeUndated: raw.dueFilter.includeUndated !== false }
+      : d.dueFilter,
+    ganttFrozen: strings(raw.ganttFrozen),
   };
 }
 

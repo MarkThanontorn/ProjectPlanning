@@ -41,8 +41,8 @@ import { useComputed, useFitToViewport, useNow } from '../../hooks';
 import { useAppStore } from '../../store/useAppStore';
 import { cx, ViewTitle } from '../../components/ui';
 import { ProjectMilestoneModal } from '../../components/MilestoneEditor';
-import { CollapseAllButtons, HideCompletedToggle, InChargeFilter } from '../../components/completion';
-import { inChargeRowIds } from '../../domain/taskState';
+import { CollapseAllButtons, HideCompletedToggle, RowFilter } from '../../components/completion';
+import { rowFilterIds } from '../../domain/taskState';
 import { ResizeHandle } from '../../components/ResizeHandle';
 import { fmtYmd } from '../../domain/dates';
 import { focusRowIds, weekRange } from '../../domain/week';
@@ -294,11 +294,21 @@ export function GanttView() {
     [focusWeeks, nodes, computed, milestones, focusStart, focusDays],
   );
   const inCharge = useAppStore((s) => s.settings.inChargeFilter);
-  const chargeIds = useMemo(() => inChargeRowIds(nodes, inCharge), [nodes, inCharge]);
-  useEffect(() => setNewIds(new Set()), [focusWeeks, inCharge]);
+  const dueFilter = useAppStore((s) => s.settings.dueFilter);
+  const chargeIds = useMemo(() => rowFilterIds(nodes, { people: inCharge, due: dueFilter }), [nodes, inCharge, dueFilter]);
+  useEffect(() => setNewIds(new Set()), [focusWeeks, inCharge, dueFilter]);
+  /** Frozen rows on screen, in order: each sticks one row below the previous. */
+  const frozenIds = useAppStore((s) => s.settings.ganttFrozen);
   const rows = flattenTree(nodes).filter(
     (n) => !hiddenIds.has(n.id) && (newIds.has(n.id) || ((!focusIds || focusIds.has(n.id)) && (!chargeIds || chargeIds.has(n.id)))),
   );
+  const frozenAt = useMemo(() => {
+    const at = new Map<string, number>();
+    for (const n of rows) if (frozenIds.includes(n.id)) at.set(n.id, at.size);
+    return at;
+  }, [rows, frozenIds]);
+  const toggleFrozen = (id: string) =>
+    updateSettings({ ganttFrozen: frozenIds.includes(id) ? frozenIds.filter((x) => x !== id) : [...frozenIds, id] });
 
   /** Moving rows (same rules as WBS): drag the ⠿ handle onto another row. */
   const rowSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -724,7 +734,7 @@ export function GanttView() {
             >
               ⊕ {t('wbs.newProject')}
             </button>
-            <InChargeFilter />
+            <RowFilter />
             <CollapseAllButtons />
             <HideCompletedToggle />
             <button className="shrink-0 rounded-lg border border-slate-300 bg-white px-3 py-1 hover:bg-slate-100" onClick={scrollToToday}>
@@ -799,6 +809,8 @@ export function GanttView() {
           <DndContext
             sensors={rowSensors}
             collisionDetection={pointerWithin}
+            // Moving rows only needs up / down: don't scroll the dates sideways near the edges.
+            autoScroll={{ threshold: { x: 0, y: 0.2 } }}
             onDragStart={(e) => setRowDragId(String(e.active.id).slice(ROW_PREFIX.length))}
             onDragMove={(e) => {
               const next = rowDropFor(e, nodes, kids);
@@ -825,8 +837,12 @@ export function GanttView() {
                   key={node.id}
                   node={node}
                   drop={rowDrop?.targetId === node.id ? rowDrop.pos : null}
-                  className={cx('group/row flex border-b border-slate-200/70 hover:bg-slate-50/60', KIND_ROW_BORDER[node.kind])}
-                  style={{ height: ROW_H }}
+                  className={cx(
+                    'group/row flex border-b border-slate-200/70 hover:bg-slate-50/60',
+                    KIND_ROW_BORDER[node.kind],
+                    frozenAt.has(node.id) && 'sticky z-[25] bg-white shadow-[0_2px_3px_-2px_rgb(0_0_0/0.25)]',
+                  )}
+                  style={{ height: ROW_H, ...(frozenAt.has(node.id) ? { top: headerH + frozenAt.get(node.id)! * ROW_H } : {}) }}
                 >
                   {(handle) => (
                   <>
@@ -842,6 +858,8 @@ export function GanttView() {
                       editing={editingId === node.id}
                       onEditing={(on) => setEditingId(on ? node.id : null)}
                       onAdd={(kind) => add(node.id, kind)}
+                      frozen={frozenAt.has(node.id)}
+                      onFreeze={() => toggleFrozen(node.id)}
                     />
                   </div>
                   <div
@@ -860,6 +878,10 @@ export function GanttView() {
                       >
                         {node.kind !== 'task' && '◆'}
                       </div>
+                    )}
+                    {frozenAt.has(node.id) && (
+                      // The page's Today line sits under frozen rows: draw it again here.
+                      <div className="pointer-events-none absolute bottom-0 top-0 z-[8] w-0.5 bg-rose-500" style={{ left: todayX + dayW / 2 }} />
                     )}
                     {renderBar(node, c, rowIdx)}
                     {node.dueDate &&

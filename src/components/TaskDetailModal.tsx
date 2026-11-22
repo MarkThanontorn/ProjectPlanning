@@ -8,6 +8,7 @@ import { DayButtons, TimerButtons, TimeUsing } from './TaskCard';
 import { ActualLeadtimeCell, cx, DateInput, InlineText, LeadtimeText, PlanLeadtimeCell, ProgressBar, ProgressSlider } from './ui';
 import { CompleteToggle, NotRelevantToggle } from './completion';
 import { MilestoneEditor } from './MilestoneEditor';
+import { PeopleField } from './PeopleField';
 import { EisenhowerControls } from './EisenhowerControls';
 import { DependencyEditor } from './DependencyEditor';
 import { TaskHistory, TaskTeamBar } from './team/TaskTeam';
@@ -99,7 +100,7 @@ export function TaskDetailModal() {
           </div>
           <div className={field}>
             <span className="text-slate-500">{t('col.inCharge')}</span>
-            <InlineText value={node.inCharge} onCommit={(v) => updateNode(node.id, { inCharge: v })} />
+            <PeopleField value={node.inCharge} fill onChange={(v) => updateNode(node.id, { inCharge: v })} />
           </div>
           <div className={field}>
             <span className="text-slate-500">{t('col.status')}</span>

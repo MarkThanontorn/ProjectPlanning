@@ -130,6 +130,10 @@ export interface Settings {
   ganttFocusWeeks: 0 | 1 | 2;
   /** WBS / Gantt: show only these people's tasks ('' = nobody assigned; empty list = everyone). */
   inChargeFilter: string[];
+  /** WBS / Gantt: show only items due in this range (Due Date, or Plan End when there is none). */
+  dueFilter: { from: string | null; to: string | null; includeUndated: boolean };
+  /** Gantt rows kept at the top while scrolling (e.g. a project with its milestones). */
+  ganttFrozen: string[];
 }
 
 export type BoardSortKey = 'priority' | 'rank' | 'dueDate' | 'planEnd' | 'progress' | 'name';

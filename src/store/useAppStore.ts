@@ -7,7 +7,7 @@ import type { AppData, ColumnDef, Eisenhower, Milestone, NodeKind, Routine, Sett
 export const MAX_HIGHLIGHTS = 3;
 import { DexieRepository } from '../data/dexieRepo';
 import { normalizeData } from '../domain/normalize';
-import { STARTED_PROGRESS } from '../domain/taskState';
+import { progressForStatus, statusForProgress } from '../domain/taskState';
 import { stripDemo } from '../domain/demo';
 import { blockers, wouldCycle } from '../domain/deps';
 import type { Repository } from '../data/repository';
@@ -54,7 +54,7 @@ interface AppState extends AppData {
   pauseTimer(id: string): void;
   completeTask(id: string): void;
   setStatus(id: string, status: Status): void;
-  /** Progress and status move together: 0% = Queue, in between = In Progress, 100% = Done. */
+  /** Progress and status move together: 0% Queue · 5–75% In Progress · 95% Reviewing · 100% Done. */
   setProgress(id: string, progress: number): void;
   /** Takes a card off this week's boards; status and progress stay as they are. */
   removeFromBoard(id: string, weekStart: string): void;
@@ -90,9 +90,6 @@ interface AppState extends AppData {
 }
 
 let initPromise: Promise<void> | undefined;
-
-/** Progress of a task that is (re)started: never 0%, and no longer 100%. */
-const reopenedProgress = (n: WbsNode) => (n.progress >= 100 ? 95 : n.progress === 0 ? STARTED_PROGRESS : n.progress);
 
 /** Called after every local change with the state before and after (team mode records it). */
 type CommitListener = (prev: AppData, next: AppData) => void;
@@ -281,7 +278,11 @@ export const useAppStore = create<AppState>((set, get) => {
       // One running timer at a time: starting a task pauses the others.
       const now = new Date();
       commit((s) => ({
-        nodes: s.nodes.map((n) => (n.id === id ? { ...startTimer(n, now), boardOffWeek: null, notRelevant: null, progress: reopenedProgress(n) } : isRunning(n) ? pauseTimer(n, now) : n)),
+        nodes: s.nodes.map((n) => {
+          if (n.id !== id) return isRunning(n) ? pauseTimer(n, now) : n;
+          const started = startTimer(n, now);
+          return { ...started, boardOffWeek: null, notRelevant: null, progress: progressForStatus(started.status, n.progress) };
+        }),
       }));
     },
     pauseTimer(id) {
@@ -299,7 +300,7 @@ export const useAppStore = create<AppState>((set, get) => {
           ...base,
           status,
           actualEnd: n.status === 'done' ? null : base.actualEnd,
-          progress: status === 'queue' ? 0 : reopenedProgress(n),
+          progress: progressForStatus(status, n.progress),
           boardOffWeek: null,
           notRelevant: null,
         };
@@ -308,10 +309,11 @@ export const useAppStore = create<AppState>((set, get) => {
 
     setProgress(id, progress) {
       if (progress >= 100) return get().completeTask(id);
+      const status = statusForProgress(progress);
       mapNode(id, (n) => ({
-        ...(progress === 0 ? pauseTimer(n) : n),
+        ...(status === 'queue' || status === 'reviewing' ? pauseTimer(n) : n),
         progress,
-        status: progress === 0 ? 'queue' : n.status === 'done' || n.status === 'queue' ? 'in_progress' : n.status,
+        status,
         actualEnd: n.status === 'done' ? null : n.actualEnd,
         notRelevant: null,
       }));
@@ -333,7 +335,8 @@ export const useAppStore = create<AppState>((set, get) => {
       const node = get().nodes.find((n) => n.id === id);
       if (!node) return;
       const isLeafTask = node.kind === 'task' && !get().nodes.some((n) => n.parentId === id);
-      if (isLeafTask) return done ? get().completeTask(id) : get().setStatus(id, 'in_progress');
+      // "Not done" on a finished task: back to waiting for review (95%).
+      if (isLeafTask) return done ? get().completeTask(id) : get().setStatus(id, 'reviewing');
       // Projects / groups: only the node itself; tasks inside keep their own status.
       mapNode(id, (n) => ({ ...n, status: done ? 'done' : 'queue', actualEnd: done ? todayIso() : null }));
     },

@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { RowName } from '../../components/RowName';
+import { PeopleField } from '../../components/PeopleField';
 import { useTranslation } from 'react-i18next';
 import {
   closestCenter,
@@ -36,8 +37,8 @@ import {
 } from '../../components/ui';
 import { ColumnManager } from './ColumnManager';
 import { ResizeHandle } from '../../components/ResizeHandle';
-import { CollapseAllButtons, HideCompletedToggle, InChargeFilter } from '../../components/completion';
-import { inChargeRowIds } from '../../domain/taskState';
+import { CollapseAllButtons, HideCompletedToggle, RowFilter } from '../../components/completion';
+import { rowFilterIds } from '../../domain/taskState';
 import { completedIds } from '../../domain/completion';
 import { DROP_PREFIX, ROW_PREFIX, rowDropFor, type DropPos, type RowDrop, type RowHandle } from '../../components/rowDnd';
 import { KIND_ACCENT, KIND_ICON, KIND_ROW_BG, KIND_ROW_BORDER, KIND_TEXT } from '../../kindStyle';
@@ -239,7 +240,7 @@ function Cell({ col, node, c }: { col: ColumnDef; node: WbsNode; c: Computed }) 
         </select>
       );
     case 'inCharge':
-      return <InlineText value={node.inCharge} onCommit={(v) => set({ inCharge: v })} className="min-w-[7rem]" />;
+      return <PeopleField value={node.inCharge} fill={!!col.width} onChange={(v) => set({ inCharge: v })} />;
     case 'remark':
       return <LongTextCell value={node.remark} label={`${t('col.remark')} — ${node.name}`} fill={!!col.width} onCommit={(v) => set({ remark: v })} />;
     case 'dependsOn':
@@ -364,8 +365,9 @@ export function WbsView() {
   const hideCompleted = useAppStore((s) => s.settings.hideCompleted);
   const completed = useMemo(() => completedIds(nodes), [nodes]);
   const inCharge = useAppStore((s) => s.settings.inChargeFilter);
-  const chargeIds = useMemo(() => inChargeRowIds(nodes, inCharge), [nodes, inCharge]);
-  useEffect(() => setNewIds(new Set()), [inCharge]);
+  const dueFilter = useAppStore((s) => s.settings.dueFilter);
+  const chargeIds = useMemo(() => rowFilterIds(nodes, { people: inCharge, due: dueFilter }), [nodes, inCharge, dueFilter]);
+  useEffect(() => setNewIds(new Set()), [inCharge, dueFilter]);
   const shown = (n: WbsNode) => !(hideCompleted && completed.has(n.id)) && (!chargeIds || chargeIds.has(n.id) || newIds.has(n.id));
 
   const renderNode = (node: WbsNode): ReactNode => {
@@ -441,7 +443,7 @@ export function WbsView() {
         navKey="wbs"
         aside={
           <div className="relative flex flex-wrap gap-2">
-            <InChargeFilter />
+            <RowFilter />
             <CollapseAllButtons />
             <HideCompletedToggle />
             <button

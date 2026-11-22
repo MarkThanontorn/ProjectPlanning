@@ -4,7 +4,8 @@ import { fmtYmd, parseDateText } from './dates';
 import { createNode, defaultSettings } from './factory';
 import { sanitizeNode, sanitizeSettings } from './sanitize';
 import type { BoardSort, Computed, WbsNode } from './types';
-import { alignTask, inChargeRowIds } from './taskState';
+import { alignTask, inChargeRowIds, progressForStatus, rowFilterIds, statusForProgress } from './taskState';
+import { joinPeople, knownPeople, splitPeople } from './people';
 import { focusRowIds, isThisWeek, weekRange } from './week';
 
 const task = (id: string, patch: Partial<WbsNode> = {}): WbsNode => ({ ...createNode('task', 'p', id, 0), id, ...patch });
@@ -89,7 +90,9 @@ describe('status and progress agree', () => {
     expect(alignTask(task('a', { status: 'queue', progress: 25 })).status).toBe('in_progress');
     expect(alignTask(task('a', { status: 'in_progress', progress: 100 })).status).toBe('done');
     expect(alignTask(task('a', { status: 'done', progress: 50 })).progress).toBe(100);
-    expect(alignTask(task('a', { status: 'reviewing', progress: 0 })).progress).toBe(5);
+    expect(alignTask(task('a', { status: 'reviewing', progress: 0 })).progress).toBe(95);
+    expect(alignTask(task('a', { status: 'in_progress', progress: 95 })).status).toBe('reviewing');
+    expect(alignTask(task('a', { status: 'in_progress', progress: 0 })).progress).toBe(5);
   });
   it('leaves correct tasks, and projects / groups, alone', () => {
     const ok = task('a', { status: 'in_progress', progress: 25 });
@@ -113,4 +116,46 @@ describe('in-charge filter', () => {
     expect([...inChargeRowIds(nodes, [''])!].sort()).toEqual(['nobody', 'p']);
   });
   it('no selection means no filter', () => expect(inChargeRowIds(nodes, [])).toBeNull());
+});
+
+describe('95% = Reviewing', () => {
+  it('progress gives the status', () => {
+    expect([0, 5, 75, 95, 100].map(statusForProgress)).toEqual(['queue', 'in_progress', 'in_progress', 'reviewing', 'done']);
+  });
+  it('status gives the progress', () => {
+    expect(progressForStatus('reviewing', 25)).toBe(95);
+    expect(progressForStatus('in_progress', 95)).toBe(75);
+    expect(progressForStatus('in_progress', 50)).toBe(50);
+    expect(progressForStatus('in_progress', 0)).toBe(5);
+  });
+});
+
+describe('several people in In-charge', () => {
+  it('reads commas, slashes and semicolons, and writes commas', () => {
+    expect(splitPeople('Chavalit/Thanontorn')).toEqual(['Chavalit', 'Thanontorn']);
+    expect(splitPeople(' A , B; A ')).toEqual(['A', 'B']);
+    expect(joinPeople(['A', 'B'])).toBe('A, B');
+  });
+  it('lists everyone named anywhere', () => {
+    expect(knownPeople([task('1', { inCharge: 'Bee, Mark' }), task('2', { inCharge: 'Mark' })])).toEqual(['Bee', 'Mark']);
+  });
+  it('the filter finds a task by any of its people', () => {
+    expect(inChargeRowIds([task('x', { parentId: null, inCharge: 'Chavalit/Thanontorn' })], ['Thanontorn'])?.has('x')).toBe(true);
+  });
+});
+
+describe('due date range filter', () => {
+  const p = { ...createNode('project', null, 'P', 0), id: 'p' };
+  const old = task('old', { parentId: 'p', status: 'done', dueDate: '2026-01-10' });
+  const soon = task('soon', { parentId: 'p', dueDate: '2026-11-25' });
+  const planned = task('planned', { parentId: 'p', planEnd: '2026-11-28' });
+  const none = task('none', { parentId: 'p' });
+  const nodes = [p, old, soon, planned, none];
+  const due = (includeUndated: boolean) => ({ people: [], due: { from: '2026-11-01', to: '2026-11-30', includeUndated } });
+  it('keeps items due in the range (Plan End when there is no Due Date) and drops old ones', () => {
+    expect([...rowFilterIds(nodes, due(false))!].sort()).toEqual(['p', 'planned', 'soon']);
+  });
+  it('can also keep tasks without any date', () => {
+    expect(rowFilterIds(nodes, due(true))!.has('none')).toBe(true);
+  });
 });

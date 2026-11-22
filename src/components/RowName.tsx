@@ -24,6 +24,8 @@ export function RowName({
   editing,
   onEditing,
   onAdd,
+  frozen,
+  onFreeze,
 }: {
   node: WbsNode;
   isLeaf: boolean;
@@ -32,6 +34,9 @@ export function RowName({
   editing: boolean;
   onEditing: (on: boolean) => void;
   onAdd: (kind: NodeKind) => void;
+  /** Gantt: keep this row at the top while scrolling. */
+  frozen?: boolean;
+  onFreeze?: () => void;
 }) {
   const { t } = useTranslation();
   const nodes = useAppStore((s) => s.nodes);
@@ -75,6 +80,11 @@ export function RowName({
         </button>
       )}
       {node.notRelevant && <NotRelevantBadge />}
+      {frozen && (
+        <span className="shrink-0 text-xs" title={t('gantt.frozen')}>
+          📌
+        </span>
+      )}
       <NodeTeamBadge nodeId={node.id} />
       {waitingFor.length > 0 && <span title={t('deps.blockedBy', { names: waitingFor.map((b) => b.name).join(', ') })}>🔒</span>}
       {!editing && container && (
@@ -112,6 +122,16 @@ export function RowName({
           <button className={iconBtn} title={t('wbs.rename')} aria-label={t('wbs.rename')} onClick={() => onEditing(true)}>
             ✎
           </button>
+          {onFreeze && (
+            <button
+              className={cx(iconBtn, frozen && 'bg-sky-100 text-sky-700')}
+              title={t(frozen ? 'gantt.unfreeze' : 'gantt.freeze')}
+              aria-label={t(frozen ? 'gantt.unfreeze' : 'gantt.freeze')}
+              onClick={onFreeze}
+            >
+              📌
+            </button>
+          )}
           <CompleteToggle node={node} />
           {node.kind === 'task' && isLeaf && <NotRelevantToggle node={node} />}
           {node.kind === 'task' && isLeaf && <DayButtons node={node} bar />}

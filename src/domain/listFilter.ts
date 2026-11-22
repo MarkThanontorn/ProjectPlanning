@@ -1,3 +1,4 @@
+import { splitPeople } from './people';
 import { STATUSES, type Computed, type Rank, type Status, type WbsNode } from './types';
 
 export interface DateRange {
@@ -74,7 +75,10 @@ export function matches(n: WbsNode, f: ListFilter, ctx: RowContext): boolean {
   if (f.projects.length && !f.projects.includes(ctx.rootId)) return false;
   if (f.statuses.length && !f.statuses.includes(n.status)) return false;
   if (f.ranks.length && !f.ranks.includes(n.rank ?? 'none')) return false;
-  if (f.inCharge.length && !f.inCharge.includes(n.inCharge.trim())) return false;
+  if (f.inCharge.length) {
+    const who = splitPeople(n.inCharge);
+    if (who.length ? !who.some((p) => f.inCharge.includes(p)) : !f.inCharge.includes('')) return false;
+  }
   if (!inDate(n.planStart, f.planStart) || !inDate(n.planEnd, f.planEnd) || !inDate(n.dueDate, f.dueDate)) return false;
   if (!inNum(n.progress, f.progress)) return false;
   const days = (h: number | null | undefined) => (h == null ? null : h / ctx.hoursPerDay);

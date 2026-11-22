@@ -81,6 +81,8 @@ export const defaultSettings = (): Settings => ({
   ganttNameWidth: 256,
   ganttFocusWeeks: 0,
   inChargeFilter: [],
+  dueFilter: { from: null, to: null, includeUndated: true },
+  ganttFrozen: [],
 });
 
 export const defaultToday = (): TodayData => ({ highlights: {}, routines: [], routineDone: {} });
