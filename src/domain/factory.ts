@@ -31,6 +31,7 @@ export function createNode(kind: NodeKind, parentId: string | null, name: string
     actualLeadtimeOverrideHrs: null,
     boardOffWeek: null,
     notRelevant: null,
+    hideSummaryBar: false,
     custom: {},
   };
 }

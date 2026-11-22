@@ -62,6 +62,8 @@ export interface WbsNode {
   boardOffWeek: string | null;
   /** Marked "not ours": counted as done at 100%. Keeps what to restore if the mark is removed. */
   notRelevant: { status: Status; progress: number } | null;
+  /** Project / group: no summary (total progress) bar in Gantt, for it and everything inside. */
+  hideSummaryBar: boolean;
   custom: Record<string, string>;
 }
 

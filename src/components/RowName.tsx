@@ -6,6 +6,7 @@ import { useAppStore } from '../store/useAppStore';
 import { CompleteToggle, NotRelevantToggle } from './completion';
 import type { RowHandle } from './rowDnd';
 import { NodeTeamBadge } from './team/TaskTeam';
+import { DayButtons } from './TaskCard';
 import { cx, InlineText, NotRelevantBadge } from './ui';
 
 const iconBtn = 'grid h-6 w-6 shrink-0 place-items-center rounded text-slate-500 hover:bg-slate-200';
@@ -13,7 +14,7 @@ const iconBtn = 'grid h-6 w-6 shrink-0 place-items-center rounded text-slate-500
 /**
  * The Name cell of a row — one component so WBS and Gantt work the same:
  * click the name for details, ✎ to rename, + to add inside, and actions on hover.
- * The row needs the `group/row` class. Actions appear just past the cell, so they never cover the name.
+ * Actions appear just past the cell while the mouse is on the name, so they never cover it.
  */
 export function RowName({
   node,
@@ -38,7 +39,7 @@ export function RowName({
   const container = node.kind !== 'task';
   const waitingFor = isLeaf && node.status !== 'done' ? blockers(node, nodes) : [];
   return (
-    <div className="relative flex min-w-0 flex-1 items-center gap-1">
+    <div className="group/name relative flex min-w-0 flex-1 items-center gap-1">
       <button
         ref={handle.setActivatorNodeRef}
         {...handle.listeners}
@@ -87,7 +88,9 @@ export function RowName({
         </button>
       )}
       {!editing && (
-        <div className="absolute left-full top-1/2 z-10 ml-1.5 hidden -translate-y-1/2 items-center gap-0.5 whitespace-nowrap rounded-lg border border-slate-200 bg-white px-1 py-0.5 shadow-md group-hover/row:flex">
+        // The padding bridges the gap to the bar, so moving the mouse onto it keeps it open.
+        <div className="absolute left-full top-1/2 z-10 hidden -translate-y-1/2 pl-1.5 group-hover/name:block">
+        <div className="flex items-center gap-0.5 whitespace-nowrap rounded-lg border border-slate-200 bg-white px-1 py-0.5 shadow-md">
           {container && (
             <>
               <button
@@ -111,9 +114,7 @@ export function RowName({
           </button>
           <CompleteToggle node={node} />
           {node.kind === 'task' && isLeaf && <NotRelevantToggle node={node} />}
-          <button className={iconBtn} title={t('wbs.open')} aria-label={t('wbs.open')} onClick={() => openTask(node.id)}>
-            ⤢
-          </button>
+          {node.kind === 'task' && isLeaf && <DayButtons node={node} bar />}
           <button
             className={cx(iconBtn, 'text-slate-400 hover:bg-rose-100 hover:text-rose-700')}
             title={t('wbs.delete')}
@@ -122,6 +123,7 @@ export function RowName({
           >
             ✕
           </button>
+        </div>
         </div>
       )}
     </div>

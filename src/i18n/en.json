@@ -165,7 +165,10 @@
     "checklist": "Check List",
     "addItem": "Add item…",
     "close": "Close",
-    "notes": "Detail"
+    "notes": "Detail",
+    "summaryBar": "Show the total progress bar in Gantt",
+    "summaryBarHint": "Turn off where an overall bar isn't useful, e.g. Daily Task (applies to the groups inside too)",
+    "summaryBarParent": "Turned off by \"{{name}}\""
   },
   "gantt": {
     "today": "Today",

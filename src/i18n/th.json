@@ -165,7 +165,10 @@
     "checklist": "เช็คลิสต์",
     "addItem": "เพิ่มรายการ…",
     "close": "ปิด",
-    "notes": "รายละเอียด"
+    "notes": "รายละเอียด",
+    "summaryBar": "แสดง Bar ความคืบหน้ารวมใน Gantt",
+    "summaryBarHint": "ปิดได้สำหรับงานที่ไม่ต้องดูภาพรวม เช่น Daily Task (ใช้กับกลุ่มด้านในด้วย)",
+    "summaryBarParent": "ปิดอยู่จาก \"{{name}}\""
   },
   "gantt": {
     "today": "วันนี้",

@@ -47,6 +47,8 @@ interface AppState extends AppData {
   toggleCollapsed(id: string): void;
   /** Collapse or expand every project / group. */
   collapseAll(collapsed: boolean): void;
+  /** Expand just these projects / groups. */
+  expandNodes(ids: string[]): void;
 
   startTimer(id: string): void;
   pauseTimer(id: string): void;
@@ -258,6 +260,12 @@ export const useAppStore = create<AppState>((set, get) => {
 
     toggleCollapsed(id) {
       mapNode(id, (n) => ({ ...n, collapsed: !n.collapsed }));
+    },
+
+    expandNodes(ids) {
+      const set = new Set(ids);
+      if (!get().nodes.some((n) => set.has(n.id) && n.collapsed)) return;
+      commit((s) => ({ nodes: s.nodes.map((n) => (set.has(n.id) && n.collapsed ? { ...n, collapsed: false } : n)) }));
     },
 
     collapseAll(collapsed) {

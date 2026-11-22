@@ -61,6 +61,7 @@ export function sanitizeNode(raw: unknown): WbsNode | null {
     leadtimeOverrideHrs: numOrNull(raw.leadtimeOverrideHrs),
     actualLeadtimeOverrideHrs: numOrNull(raw.actualLeadtimeOverrideHrs),
     boardOffWeek: isoDate(raw.boardOffWeek),
+    hideSummaryBar: raw.hideSummaryBar === true,
     notRelevant: isObj(raw.notRelevant)
       ? { status: oneOf(raw.notRelevant.status, STATUSES, 'queue'), progress: Math.min(100, Math.max(0, num(raw.notRelevant.progress, 0))) }
       : null,

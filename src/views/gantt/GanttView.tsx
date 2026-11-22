@@ -210,6 +210,7 @@ export function GanttView() {
   const milestones = useAppStore((s) => s.milestones);
   const updateMilestone = useAppStore((s) => s.updateMilestone);
   const addMilestone = useAppStore((s) => s.addMilestone);
+  const expandNodes = useAppStore((s) => s.expandNodes);
   /** Right-click menu on the grid, and the quick "new milestone" box. */
   const [cellMenu, setCellMenu] = useState<{ x: number; y: number; node: WbsNode; iso: string } | null>(null);
   const [msDraft, setMsDraft] = useState<{ x: number; y: number; projectId: string; iso: string } | null>(null);
@@ -305,6 +306,20 @@ export function GanttView() {
   const [rowDrop, setRowDrop] = useState<RowDrop | null>(null);
   const draggedRow = rowDragId ? nodes.find((n) => n.id === rowDragId) : undefined;
   const kids = childrenMap(nodes);
+  /** Projects / groups whose summary bar is switched off (on them or a parent). */
+  const noSummary = useMemo(() => {
+    const byId = new Map(nodes.map((n) => [n.id, n]));
+    const out = new Set<string>();
+    for (const n of nodes) {
+      for (let a: WbsNode | undefined = n; a; a = a.parentId ? byId.get(a.parentId) : undefined) {
+        if (a.hideSummaryBar) {
+          out.add(n.id);
+          break;
+        }
+      }
+    }
+    return out;
+  }, [nodes]);
 
   const range = useMemo(() => {
     if (focusWeeks) return { start: parseISO(focusStart), days: focusDays };
@@ -334,7 +349,8 @@ export function GanttView() {
 
   const scrollToToday = useCallback(() => {
     const el = scrollRef.current;
-    if (el) el.scrollLeft = focusWeeks ? 0 : Math.max(0, NAME_W + todayX - el.clientWidth / 3);
+    // The Name column covers the left of the box: place today a third into the part you can see.
+    if (el) el.scrollLeft = focusWeeks ? 0 : Math.max(0, todayX - (el.clientWidth - NAME_W) / 3);
   }, [todayX, NAME_W, focusWeeks]);
 
   // New scale: drop any extension, then re-center on today once the new range is laid out.
@@ -348,7 +364,7 @@ export function GanttView() {
     if (!centerPending.current) return;
     centerPending.current = false;
     const el = scrollRef.current;
-    if (focusDate && el && !focusWeeks) el.scrollLeft = Math.max(0, NAME_W + x(focusDate) - el.clientWidth / 2);
+    if (focusDate && el && !focusWeeks) el.scrollLeft = Math.max(0, x(focusDate) - (el.clientWidth - NAME_W) / 2);
     else scrollToToday();
     if (el) setView({ left: el.scrollLeft, width: el.clientWidth });
     // x() is derived from range, which is already a dependency.
@@ -590,6 +606,7 @@ export function GanttView() {
     const text = `${fmtYmd(plan.planStart)} – ${fmtYmd(plan.planEnd)}`;
     const shortText = text.replace(/\d{4}\//g, '');
 
+    if (!leaf && noSummary.has(node.id)) return null;
     if (!leaf)
       return (
         <div
@@ -718,7 +735,13 @@ export function GanttView() {
                 <button
                   key={w}
                   className={cx('border-l border-slate-300 px-3 py-1 first:border-l-0', focusWeeks === w ? 'bg-emerald-600 text-white' : 'hover:bg-slate-100')}
-                  onClick={() => updateSettings({ ganttFocusWeeks: focusWeeks === w ? 0 : w })}
+                  onClick={() => {
+                    if (focusWeeks !== w) {
+                      const ids = focusRowIds(nodes, computed, milestones, focusStart, shiftIsoDate(focusStart, w * 7 - 1));
+                      expandNodes([...ids]);
+                    }
+                    updateSettings({ ganttFocusWeeks: focusWeeks === w ? 0 : w });
+                  }}
                 >
                   🎯 {t(`gantt.focus${w}`)}
                 </button>

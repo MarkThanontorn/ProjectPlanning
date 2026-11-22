@@ -10,6 +10,14 @@ Versions before 1.0.0 were reconstructed after the fact from the development his
 (dates are approximate). Only 1.0.0 onward exists in git, so earlier versions can be
 read about here but not checked out.
 
+## [2.5.0] — 2026-11-22
+- Gantt Focus opens the projects and groups that hold work planned in that period.
+- The quick-action bar appears only while the mouse is on the name, and has ☀ (day) and ☆ (highlight)
+  instead of the open button (click the name to open).
+- Gantt: choose per project / group whether its total progress bar is shown (in its details popup);
+  turning it off also hides the bars of the groups inside.
+- Gantt: "Today" now lands in the visible part of the timeline, whatever the width of the Name column.
+
 ## [2.4.0] — 2026-11-04
 - Status and Progress always agree, whichever you change: Queue = 0%, In Progress / Reviewing = between,
   Done = 100%. Saved data is brought into line when the app opens.

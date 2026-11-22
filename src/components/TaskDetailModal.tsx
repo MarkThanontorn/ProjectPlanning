@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { newId } from '../domain/factory';
-import { RANKS, STATUSES, type Rank, type Status } from '../domain/types';
+import { RANKS, STATUSES, type Rank, type Status, type WbsNode } from '../domain/types';
 import { useComputed, useNow } from '../hooks';
 import { useAppStore } from '../store/useAppStore';
 import { DayButtons, TimerButtons, TimeUsing } from './TaskCard';
@@ -165,6 +165,7 @@ export function TaskDetailModal() {
             </>
           )}
         </div>
+        {!isTask && <SummaryBarSwitch node={node} />}
         {node.parentId === null && (
           <div className="mt-5 rounded-lg border border-slate-200 p-3">
             <MilestoneEditor projectId={node.id} />
@@ -236,5 +237,34 @@ export function TaskDetailModal() {
         <TaskHistory nodeId={node.id} />
       </div>
     </div>
+  );
+}
+
+/** Project / group: show its total progress bar in Gantt or not (also for everything inside). */
+function SummaryBarSwitch({ node }: { node: WbsNode }) {
+  const { t } = useTranslation();
+  const nodes = useAppStore((s) => s.nodes);
+  const updateNode = useAppStore((s) => s.updateNode);
+  let parentOff: WbsNode | undefined;
+  for (let p = nodes.find((n) => n.id === node.parentId); p; p = nodes.find((n) => n.id === p!.parentId)) {
+    if (p.hideSummaryBar) {
+      parentOff = p;
+      break;
+    }
+  }
+  return (
+    <label className="mt-4 flex items-start gap-2 text-sm text-slate-700">
+      <input
+        type="checkbox"
+        className="mt-0.5 h-4 w-4 accent-emerald-600"
+        checked={!node.hideSummaryBar && !parentOff}
+        disabled={!!parentOff}
+        onChange={(e) => updateNode(node.id, { hideSummaryBar: !e.target.checked })}
+      />
+      <span>
+        {t('detail.summaryBar')}
+        <span className="block text-xs text-slate-400">{parentOff ? t('detail.summaryBarParent', { name: parentOff.name }) : t('detail.summaryBarHint')}</span>
+      </span>
+    </label>
   );
 }
