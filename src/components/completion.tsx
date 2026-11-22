@@ -127,7 +127,7 @@ export function RowFilter() {
             <Field label={t('filter.dueRange')}>
               <DateRangeInput value={due} onChange={(v) => updateSettings({ dueFilter: { ...due, from: v.from, to: v.to } })} />
               <div className="mt-2 flex flex-wrap gap-1.5">
-                <button type="button" className={chip} onClick={() => preset(startOfWeek(today, { weekStartsOn: 1 }), endOfWeek(today, { weekStartsOn: 1 }))}>
+                <button type="button" className={chip} onClick={() => preset(startOfWeek(today, { weekStartsOn: 6 }), endOfWeek(today, { weekStartsOn: 6 }))}>
                   {t('filter.thisWeek')}
                 </button>
                 <button type="button" className={chip} onClick={() => preset(startOfMonth(today), endOfMonth(today))}>

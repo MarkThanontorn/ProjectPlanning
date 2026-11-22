@@ -20,6 +20,8 @@ read about here but not checked out.
 - Gantt: freeze rows (📌 on a row's name) to keep them at the top while scrolling, e.g. a project
   with its milestones above its tasks.
 - Gantt: dragging a row no longer scrolls the dates sideways.
+- Gantt focus (this week / 2 weeks) and the filter's "this week" start on Saturday.
+- The quick-action bar sits inside the Name column again (at its right edge), so it never covers the schedule.
 
 ## [2.5.0] — 2026-11-22
 - Gantt Focus opens the projects and groups that hold work planned in that period.

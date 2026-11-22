@@ -6,7 +6,7 @@ import { sanitizeNode, sanitizeSettings } from './sanitize';
 import type { BoardSort, Computed, WbsNode } from './types';
 import { alignTask, inChargeRowIds, progressForStatus, rowFilterIds, statusForProgress } from './taskState';
 import { joinPeople, knownPeople, splitPeople } from './people';
-import { focusRowIds, isThisWeek, weekRange } from './week';
+import { focusRowIds, focusWeekStart, isThisWeek, weekRange } from './week';
 
 const task = (id: string, patch: Partial<WbsNode> = {}): WbsNode => ({ ...createNode('task', 'p', id, 0), id, ...patch });
 const settings = defaultSettings();
@@ -157,5 +157,12 @@ describe('due date range filter', () => {
   });
   it('can also keep tasks without any date', () => {
     expect(rowFilterIds(nodes, due(true))!.has('none')).toBe(true);
+  });
+});
+
+describe('focus week', () => {
+  it('starts on Saturday', () => {
+    expect(focusWeekStart(new Date('2026-11-23T10:00:00'))).toBe('2026-11-21'); // Monday -> previous Saturday
+    expect(focusWeekStart(new Date('2026-11-21T10:00:00'))).toBe('2026-11-21'); // Saturday itself
   });
 });

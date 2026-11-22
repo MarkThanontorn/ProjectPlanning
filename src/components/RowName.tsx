@@ -14,7 +14,7 @@ const iconBtn = 'grid h-6 w-6 shrink-0 place-items-center rounded text-slate-500
 /**
  * The Name cell of a row — one component so WBS and Gantt work the same:
  * click the name for details, ✎ to rename, + to add inside, and actions on hover.
- * Actions appear just past the cell while the mouse is on the name, so they never cover it.
+ * Actions appear at the right edge of the Name column while the mouse is on the name, so they never cover the schedule.
  */
 export function RowName({
   node,
@@ -98,8 +98,8 @@ export function RowName({
         </button>
       )}
       {!editing && (
-        // The padding bridges the gap to the bar, so moving the mouse onto it keeps it open.
-        <div className="absolute left-full top-1/2 z-10 hidden -translate-y-1/2 pl-1.5 group-hover/name:block">
+        // Inside the Name column, at its right edge: it never covers the schedule.
+        <div className="absolute right-0 top-1/2 z-10 hidden -translate-y-1/2 pl-3 shadow-[-12px_0_12px_-6px_rgb(var(--c-white))] group-hover/name:block">
         <div className="flex items-center gap-0.5 whitespace-nowrap rounded-lg border border-slate-200 bg-white px-1 py-0.5 shadow-md">
           {container && (
             <>

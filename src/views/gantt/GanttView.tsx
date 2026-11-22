@@ -45,7 +45,7 @@ import { CollapseAllButtons, HideCompletedToggle, RowFilter } from '../../compon
 import { rowFilterIds } from '../../domain/taskState';
 import { ResizeHandle } from '../../components/ResizeHandle';
 import { fmtYmd } from '../../domain/dates';
-import { focusRowIds, weekRange } from '../../domain/week';
+import { focusRowIds, focusWeekStart } from '../../domain/week';
 import { completedIds } from '../../domain/completion';
 
 const ROW_H = 40;
@@ -281,7 +281,7 @@ export function GanttView() {
   const [view, setView] = useState({ left: 0, width: 1200 });
   const pendingShift = useRef(0);
   const cfg = SCALES[scale];
-  const focusStart = weekRange(now).start;
+  const focusStart = focusWeekStart(now);
   const focusDays = focusWeeks * 7;
   const dayW = focusWeeks ? Math.max(20, Math.floor((view.width - NAME_W) / focusDays)) : cfg.dayW;
   const today = todayIso(now);
@@ -661,7 +661,7 @@ export function GanttView() {
         onPointerCancel={() => setDrag(null)}
       >
         {!node.notRelevant && <div className="h-full bg-emerald-500" style={{ width: `${node.progress}%` }} />}
-        <span className="pointer-events-none absolute inset-0 flex items-center px-2 text-[11px] font-semibold text-slate-900">
+        <span className="pointer-events-none absolute inset-0 flex items-center overflow-hidden whitespace-nowrap px-2 text-[11px] font-semibold text-slate-900">
           {width > 170 ? text : width > 90 ? shortText : ''}
         </span>
         {width > 12 &&

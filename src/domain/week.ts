@@ -10,6 +10,9 @@ export function weekRange(now: Date = new Date()) {
   };
 }
 
+/** Gantt focus weeks and the filter's "this week" start on Saturday (ISO date). */
+export const focusWeekStart = (now: Date = new Date()) => toIsoDate(startOfWeek(now, { weekStartsOn: 6 }));
+
 /** Whether a task belongs on this week's boards. */
 export function isThisWeek(node: WbsNode, now: Date = new Date()): boolean {
   const { start, end } = weekRange(now);
