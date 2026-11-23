@@ -10,6 +10,9 @@ Versions before 1.0.0 were reconstructed after the fact from the development his
 (dates are approximate). Only 1.0.0 onward exists in git, so earlier versions can be
 read about here but not checked out.
 
+## [2.6.1] — 2026-11-23
+- Gantt focus (this week / 2 weeks) and the filter's "this week" now start on Sunday.
+
 ## [2.6.0] — 2026-11-23
 - Status and Progress: 95% now means Reviewing (0% Queue · 5–75% In Progress · 95% Reviewing · 100% Done),
   both ways. "Not done" on a finished task goes back to Reviewing.

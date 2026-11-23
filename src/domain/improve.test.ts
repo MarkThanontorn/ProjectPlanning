@@ -161,8 +161,9 @@ describe('due date range filter', () => {
 });
 
 describe('focus week', () => {
-  it('starts on Saturday', () => {
-    expect(focusWeekStart(new Date('2026-11-23T10:00:00'))).toBe('2026-11-21'); // Monday -> previous Saturday
-    expect(focusWeekStart(new Date('2026-11-21T10:00:00'))).toBe('2026-11-21'); // Saturday itself
+  it('starts on Sunday', () => {
+    expect(focusWeekStart(new Date('2026-11-23T10:00:00'))).toBe('2026-11-22'); // Monday -> previous Sunday
+    expect(focusWeekStart(new Date('2026-11-22T10:00:00'))).toBe('2026-11-22'); // Sunday itself
+    expect(focusWeekStart(new Date('2026-11-21T10:00:00'))).toBe('2026-11-15'); // Saturday ends the week
   });
 });

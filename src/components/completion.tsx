@@ -5,6 +5,7 @@ import { useAppStore } from '../store/useAppStore';
 import { addDays, endOfMonth, endOfWeek, startOfMonth, startOfWeek } from 'date-fns';
 import { toIsoDate } from '../domain/calc';
 import { knownPeople } from '../domain/people';
+import { FOCUS_WEEK_STARTS_ON } from '../domain/week';
 import { Chips, DateRangeInput, Field } from './filters';
 import { cx } from './ui';
 
@@ -127,7 +128,7 @@ export function RowFilter() {
             <Field label={t('filter.dueRange')}>
               <DateRangeInput value={due} onChange={(v) => updateSettings({ dueFilter: { ...due, from: v.from, to: v.to } })} />
               <div className="mt-2 flex flex-wrap gap-1.5">
-                <button type="button" className={chip} onClick={() => preset(startOfWeek(today, { weekStartsOn: 6 }), endOfWeek(today, { weekStartsOn: 6 }))}>
+                <button type="button" className={chip} onClick={() => preset(startOfWeek(today, { weekStartsOn: FOCUS_WEEK_STARTS_ON }), endOfWeek(today, { weekStartsOn: FOCUS_WEEK_STARTS_ON }))}>
                   {t('filter.thisWeek')}
                 </button>
                 <button type="button" className={chip} onClick={() => preset(startOfMonth(today), endOfMonth(today))}>
